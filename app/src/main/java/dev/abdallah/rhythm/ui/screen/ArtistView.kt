@@ -35,6 +35,7 @@ import dev.abdallah.rhythm.data.local.model.Artist
 import dev.abdallah.rhythm.ui.theme.Background
 import dev.abdallah.rhythm.ui.theme.Blue
 import dev.abdallah.rhythm.ui.theme.Gray
+import dev.abdallah.rhythm.ui.theme.SemiTransparent
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
@@ -64,6 +65,8 @@ fun ArtistView(
                     modifier = Modifier
                         .align(Alignment.Start)
                         .padding(start = 24.dp, top = 56.dp)
+                        .background(SemiTransparent, CircleShape)
+                        .padding(10.dp)
                         .size(24.dp),
                     onClick = { onBack() }) {
                     Icon(

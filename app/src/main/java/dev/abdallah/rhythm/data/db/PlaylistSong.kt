@@ -1,0 +1,11 @@
+package dev.abdallah.rhythm.data.db
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity
+data class PlaylistSong(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val playlistId: Int,
+    val songId: Long
+)

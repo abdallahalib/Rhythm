@@ -113,12 +113,11 @@ class PlaybackServiceHandler @Inject constructor(
             PlayerEvent.SeekTo -> exoPlayer.seekTo(seekPosition)
             PlayerEvent.ChangeSong -> {
                 exoPlayer.shuffleModeEnabled = false
-                when (selectedAudioIndex) {
-                    exoPlayer.currentMediaItemIndex -> {
+                when {
+                    selectedAudioIndex == exoPlayer.currentMediaItemIndex -> {
                         playOrPause()
                     }
-
-                    else -> {
+                    selectedAudioIndex < exoPlayer.mediaItemCount -> {
                         exoPlayer.seekTo(selectedAudioIndex, 0)
                         _playbackState.value = PlaybackState.Playing(
                             isPlaying = true,

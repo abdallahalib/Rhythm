@@ -60,7 +60,9 @@ fun MiniPlayer(
     nowPlaying: Song,
     onStart: () -> Unit,
     onNext: () -> Unit,
-    onPrevious: () -> Unit
+    onPrevious: () -> Unit,
+    isFavorite: Boolean,
+    onFavorite: (Song) -> Unit,
 ) {
     val animatedPadding by animateDpAsState(
         targetValue = if (isPlaying) {
@@ -258,16 +260,15 @@ fun MiniPlayer(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                var isFavourite by remember { mutableStateOf(false) }
                 IconButton(modifier = Modifier
                     .padding(8.dp)
                     .size(32.dp)
                     .align(Alignment.CenterVertically),
-                    onClick = { isFavourite = !isFavourite }) {
+                    onClick = { onFavorite(nowPlaying) }) {
                     Icon(
                         painter = rememberAnimatedVectorPainter(
                             animatedImageVector = AnimatedImageVector.animatedVectorResource(R.drawable.favourite_animation),
-                            atEnd = isFavourite
+                            atEnd = isFavorite
                         ),
                         contentDescription = "Favorite",
                         modifier = Modifier

@@ -1,5 +1,6 @@
 package dev.abdallah.rhythm.ui.viewmodel
 
+import android.util.Log
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.SavedStateHandle
@@ -11,6 +12,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.abdallah.rhythm.data.SongRepository
+import dev.abdallah.rhythm.data.db.Playlist
 import dev.abdallah.rhythm.data.db.Song
 import dev.abdallah.rhythm.data.local.model.Album
 import dev.abdallah.rhythm.data.local.model.Artist
@@ -35,12 +37,16 @@ class SongViewModel @Inject constructor(
     var isPlaying by savedStateHandle.saveable { mutableStateOf(false) }
     var nowPlaying by savedStateHandle.saveable { mutableStateOf(Song.NONE) }
     var songs by savedStateHandle.saveable { mutableStateOf(listOf<Song>()) }
+    var playlists by savedStateHandle.saveable { mutableStateOf(listOf<Playlist>()) }
     var folderList by savedStateHandle.saveable { mutableStateOf(listOf<Folder>()) }
     var artistList by savedStateHandle.saveable { mutableStateOf(listOf<Artist>()) }
     var albumList by savedStateHandle.saveable { mutableStateOf(listOf<Album>()) }
     var selectedFolder by savedStateHandle.saveable { mutableStateOf(Folder.ROOT) }
     var selectedAlbum by savedStateHandle.saveable { mutableStateOf(Album.NONE) }
     var selectedArtist by savedStateHandle.saveable { mutableStateOf(Artist.NONE) }
+    var selectedPlaylist by savedStateHandle.saveable { mutableStateOf(Playlist.NONE) }
+    var playlistSongList by savedStateHandle.saveable { mutableStateOf(listOf<Song>()) }
+    var favorites by savedStateHandle.saveable { mutableStateOf(listOf<Song>()) }
 
     init {
         viewModelScope.launch {
@@ -53,7 +59,9 @@ class SongViewModel @Inject constructor(
                     is PlaybackState.Playing -> isPlaying = mediaState.isPlaying
                     is PlaybackState.Progress -> calculateProgressValue(mediaState.progress)
                     is PlaybackState.NowPlaying -> {
-                        nowPlaying = repository.getSong(mediaState.id.toLong())
+                        mediaState.id.toLongOrNull()?.let {
+                            nowPlaying = repository.getSong(it)
+                        }
                     }
 
                     is PlaybackState.Ready -> {
@@ -64,7 +72,6 @@ class SongViewModel @Inject constructor(
         }
         viewModelScope.launch {
             loadAudioData()
-            refreshData()
         }
     }
 
@@ -106,6 +113,32 @@ class SongViewModel @Inject constructor(
         viewModelScope.launch {
             repository.getFolders().collect {
                 folderList = it
+            }
+        }
+        viewModelScope.launch {
+            repository.getPlaylists().collect {
+                playlists = it
+            }
+        }
+        viewModelScope.launch {
+            repository.getPlaylistSongs(1).collect {
+                favorites = it
+                Log.d(TAG, "Favorites: $it")
+            }
+        }
+    }
+
+    fun onFavorite(song: Song) {
+        viewModelScope.launch {
+            repository.onFavorite(song)
+            repository.getPlaylistSongs(1).collect {
+                favorites = it
+                if (selectedPlaylist.id == 1) {
+                    playlistSongList = it
+                }
+            }
+            repository.getPlaylists().collect {
+                playlists = it
             }
         }
     }
@@ -194,6 +227,19 @@ class SongViewModel @Inject constructor(
             playbackServiceHandler.onPlayerEvents(PlayerEvent.Stop)
         }
         super.onCleared()
+    }
+
+    fun selectPlaylist(playlist: Playlist) {
+        selectedPlaylist = playlist
+        viewModelScope.launch {
+            repository.getPlaylistSongs(playlist.id).collect {
+                playlistSongList = it
+            }
+        }
+    }
+
+    fun getPlaylistSongs(): List<Song> {
+        return playlistSongList
     }
 }
 

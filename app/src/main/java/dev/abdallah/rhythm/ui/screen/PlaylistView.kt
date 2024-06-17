@@ -26,8 +26,8 @@ import androidx.compose.ui.unit.sp
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 import dev.abdallah.rhythm.R
+import dev.abdallah.rhythm.data.db.Playlist
 import dev.abdallah.rhythm.data.db.Song
-import dev.abdallah.rhythm.data.local.model.Folder
 import dev.abdallah.rhythm.ui.theme.Background
 import dev.abdallah.rhythm.ui.theme.Blue
 import dev.abdallah.rhythm.ui.theme.Gray
@@ -35,8 +35,8 @@ import dev.abdallah.rhythm.ui.theme.SemiTransparent
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
-fun FolderView(
-    folder: Folder,
+fun PlaylistView(
+    playlist: Playlist,
     songs: List<Song>,
     nowPlaying: Song,
     onItemClick: (Int) -> Unit,
@@ -50,7 +50,7 @@ fun FolderView(
             .background(Background),
     ) {
         item {
-            val brush = Brush.verticalGradient(listOf(Blue, Background))
+            val brush = Brush.verticalGradient(listOf(Gray, Background))
             Column(
                 modifier = Modifier.fillMaxWidth().background(brush)
             ) {
@@ -69,15 +69,15 @@ fun FolderView(
                     )
                 }
                 GlideImage(
-                    model = R.drawable.folder,
-                    contentDescription = "Folder icon",
+                    model = R.drawable.round_audiotrack_24,
+                    contentDescription = "Playlist artwork",
                     modifier = Modifier
                         .padding(top = 24.dp)
                         .size(192.dp)
                         .align(Alignment.CenterHorizontally)
                 )
                 Text(
-                    text = folder.name,
+                    text = playlist.name,
                     modifier = Modifier
                         .padding(top = 36.dp)
                         .align(Alignment.CenterHorizontally),

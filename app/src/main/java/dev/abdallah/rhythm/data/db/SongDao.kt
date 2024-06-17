@@ -21,4 +21,7 @@ interface SongDao {
     fun deleteAll(songs: List<Song>)
     @Query("SELECT * FROM song WHERE id = :id")
     fun getSong(id: Long): Song
+
+    @Query("SELECT * FROM song WHERE id IN (:ids)")
+    fun getSongs(ids: List<Long>): Flow<List<Song>>
 }

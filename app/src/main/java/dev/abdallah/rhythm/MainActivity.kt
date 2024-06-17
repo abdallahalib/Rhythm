@@ -62,6 +62,8 @@ import dev.abdallah.rhythm.ui.screen.ArtistView
 import dev.abdallah.rhythm.ui.screen.Artists
 import dev.abdallah.rhythm.ui.screen.FolderView
 import dev.abdallah.rhythm.ui.screen.Folders
+import dev.abdallah.rhythm.ui.screen.PlaylistView
+import dev.abdallah.rhythm.ui.screen.Playlists
 import dev.abdallah.rhythm.ui.screen.Songs
 import dev.abdallah.rhythm.ui.theme.Background
 import dev.abdallah.rhythm.ui.theme.RhythmTheme
@@ -178,6 +180,31 @@ class MainActivity : ComponentActivity() {
                     bottomSheetScaffoldState = bottomSheetScaffoldState,
                     navController = navController
                 )
+            }
+
+            composable("playlist") {
+                val playlistSongs = viewModel.getPlaylistSongs()
+                PlaylistView(playlist = viewModel.selectedPlaylist,
+                    songs = playlistSongs,
+                    nowPlaying = viewModel.nowPlaying,
+                    onItemClick = {
+                        viewModel.setMediaItemList(playlistSongs)
+                        viewModel.onUiEvents(UIEvents.ChangeSong(it))
+                        coroutineScope.launch {
+                            bottomSheetScaffoldState.bottomSheetState.expand()
+                        }
+                    },
+                    onShuffle = {
+                        viewModel.setMediaItemList(playlistSongs)
+                        viewModel.onUiEvents(UIEvents.Shuffle(Random.nextInt(viewModel.getFolderSongs().size)))
+                    },
+                    onBack = {
+                        navController.popBackStack()
+                    },
+                    onPlay = {
+                        viewModel.setMediaItemList(playlistSongs)
+                        viewModel.onUiEvents(UIEvents.ChangeSong(0))
+                    })
             }
 
             composable("folder") {
@@ -301,7 +328,12 @@ class MainActivity : ComponentActivity() {
                         },
                         onPrevious = {
                             viewModel.onUiEvents(UIEvents.Previous)
-                        })
+                        },
+                        isFavorite = viewModel.favorites.contains(viewModel.nowPlaying),
+                        onFavorite = {
+                            viewModel.onFavorite(it)
+                        },
+                    )
                 }
             },
             sheetPeekHeight = 96.dp,
@@ -360,7 +392,10 @@ class MainActivity : ComponentActivity() {
 
                     1 -> {
                         Box(modifier = Modifier.fillMaxSize()) {
-                            // Playlists
+                            Playlists(playlists = viewModel.playlists, onItemClick = {
+                                viewModel.selectPlaylist(viewModel.playlists[it])
+                                navController.navigate("playlist")
+                            })
                         }
                     }
 
