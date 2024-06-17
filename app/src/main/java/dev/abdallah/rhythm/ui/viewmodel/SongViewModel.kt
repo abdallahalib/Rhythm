@@ -241,6 +241,15 @@ class SongViewModel @Inject constructor(
     fun getPlaylistSongs(): List<Song> {
         return playlistSongList
     }
+
+    fun newPlaylist(playlistName: String) {
+        viewModelScope.launch {
+            repository.addPlaylist(playlistName)
+            repository.getPlaylists().collect {
+                playlists = it
+            }
+        }
+    }
 }
 
 

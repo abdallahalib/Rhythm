@@ -3,6 +3,7 @@ package dev.abdallah.rhythm.ui.screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -52,21 +53,41 @@ fun PlaylistView(
         item {
             val brush = Brush.verticalGradient(listOf(Gray, Background))
             Column(
-                modifier = Modifier.fillMaxWidth().background(brush)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(brush)
             ) {
-                IconButton(
+                Row(
                     modifier = Modifier
-                        .align(Alignment.Start)
-                        .padding(start = 24.dp, top = 56.dp)
-                        .background(SemiTransparent, CircleShape)
-                        .padding(10.dp)
-                        .size(24.dp),
-                    onClick = { onBack() }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.round_arrow_back_ios_24),
-                        contentDescription = "Back",
-                        tint = Color.White,
-                    )
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .padding(top = 56.dp)
+                ) {
+                    IconButton(
+                        modifier = Modifier
+                            .background(SemiTransparent, CircleShape)
+                            .padding(12.dp)
+                            .size(24.dp),
+                        onClick = { onBack() }) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.round_arrow_back_ios_24),
+                            contentDescription = "Back",
+                            tint = Color.White,
+                        )
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    IconButton(
+                        modifier = Modifier
+                            .background(SemiTransparent, CircleShape)
+                            .padding(12.dp)
+                            .size(24.dp),
+                        onClick = {  }) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.round_more_vert_24),
+                            contentDescription = "More options",
+                            tint = Color.White,
+                        )
+                    }
                 }
                 GlideImage(
                     model = R.drawable.round_audiotrack_24,

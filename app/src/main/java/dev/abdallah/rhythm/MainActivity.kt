@@ -392,10 +392,16 @@ class MainActivity : ComponentActivity() {
 
                     1 -> {
                         Box(modifier = Modifier.fillMaxSize()) {
-                            Playlists(playlists = viewModel.playlists, onItemClick = {
+                            Playlists(
+                                playlists = viewModel.playlists,
+                                onItemClick = {
                                 viewModel.selectPlaylist(viewModel.playlists[it])
                                 navController.navigate("playlist")
-                            })
+                                },
+                                onNewPlaylist = {
+                                    viewModel.newPlaylist(it)
+                                }
+                            )
                         }
                     }
 
