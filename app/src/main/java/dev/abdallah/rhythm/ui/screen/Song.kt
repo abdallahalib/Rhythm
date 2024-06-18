@@ -1,7 +1,9 @@
 package dev.abdallah.rhythm.ui.screen
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -26,13 +28,14 @@ import dev.abdallah.rhythm.data.db.Song
 import dev.abdallah.rhythm.ui.theme.Blue
 import dev.abdallah.rhythm.util.THUMBNAIL_SMALL_SIZE
 
-@OptIn(ExperimentalGlideComposeApi::class)
+@OptIn(ExperimentalGlideComposeApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun Song(
     songs: List<Song>,
     position: Int,
     nowPlaying: Song,
-    onItemClick: (Int) -> Unit
+    onItemClick: (Int) -> Unit,
+    onItemLongClick: (Song) -> Unit = {},
 ) {
     val topPadding = if (position == 0) 24.dp else 8.dp
     val bottomPadding = if (position == songs.size - 1) 112.dp else 8.dp
@@ -48,9 +51,10 @@ fun Song(
                 top = topPadding,
                 bottom = bottomPadding
             )
-            .clickable {
-                onItemClick(position)
-            },
+            .combinedClickable(
+                onClick = { onItemClick(position) },
+                onLongClick = { onItemLongClick(songs[position]) }
+            )
     ) {
         GlideImage(
             model = songs[position].artworkSmall,

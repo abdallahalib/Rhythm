@@ -1,6 +1,8 @@
 package dev.abdallah.rhythm.ui.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,16 +14,24 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
@@ -33,6 +43,7 @@ import dev.abdallah.rhythm.ui.theme.Background
 import dev.abdallah.rhythm.ui.theme.Blue
 import dev.abdallah.rhythm.ui.theme.Gray
 import dev.abdallah.rhythm.ui.theme.SemiTransparent
+import dev.abdallah.rhythm.ui.theme.Surface
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
@@ -44,7 +55,30 @@ fun PlaylistView(
     onPlay: () -> Unit,
     onShuffle: () -> Unit,
     onBack: () -> Unit,
+    onDeletePlaylist: (Playlist) -> Unit,
+    onDeletePlaylistSong: (Song, Playlist) -> Unit,
 ) {
+    var showMoreOptionsPlaylistDialog by remember { mutableStateOf(false) }
+    var showMoreOptionsSongDialog by remember { mutableStateOf(false) }
+    var selectedSong by remember { mutableStateOf(Song.NONE) }
+    if (showMoreOptionsPlaylistDialog) {
+        MoreOptionsPlaylist(
+            onDismiss = { showMoreOptionsPlaylistDialog = false },
+            onDeletePlaylist = {
+                showMoreOptionsPlaylistDialog = false
+                onDeletePlaylist(playlist)
+            }
+        )
+    }
+    if (showMoreOptionsSongDialog) {
+        MoreOptionsSong(
+            onDismiss = { showMoreOptionsSongDialog = false },
+            onDeleteSong = {
+                showMoreOptionsSongDialog = false
+                onDeletePlaylistSong(selectedSong, playlist)
+            }
+        )
+    }
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -81,7 +115,7 @@ fun PlaylistView(
                             .background(SemiTransparent, CircleShape)
                             .padding(12.dp)
                             .size(24.dp),
-                        onClick = {  }) {
+                        onClick = { showMoreOptionsPlaylistDialog = true }) {
                         Icon(
                             painter = painterResource(id = R.drawable.round_more_vert_24),
                             contentDescription = "More options",
@@ -184,8 +218,148 @@ fun PlaylistView(
                 songs = songs,
                 position = it,
                 onItemClick = onItemClick,
+                onItemLongClick = { song ->
+                    showMoreOptionsSongDialog = true
+                    selectedSong = song
+                },
                 nowPlaying = nowPlaying
             )
+        }
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MoreOptionsPlaylist(
+    onDismiss: () -> Unit,
+    onDeletePlaylist: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState()
+    ModalBottomSheet(
+        onDismissRequest = { onDismiss() },
+        containerColor = Surface,
+        sheetState = sheetState,
+        dragHandle = { },
+    ) {
+        Column(modifier = Modifier.padding(vertical = 32.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onDeletePlaylist() }
+                    .padding(horizontal = 32.dp, vertical = 16.dp)) {
+                Icon(
+                    modifier = Modifier.size(36.dp),
+                    painter = painterResource(id = R.drawable.round_delete_forever_24),
+                    contentDescription = "contentDescription",
+                    tint = Color.White,
+                )
+                Text(
+                    text = "Delete Playlist",
+                    modifier = Modifier
+                        .weight(1f, false)
+                        .padding(start = 8.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.W500,
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp, vertical = 16.dp)
+            ) {
+                Icon(
+                    modifier = Modifier.size(36.dp),
+                    painter = painterResource(id = R.drawable.ios_share_24px),
+                    contentDescription = "contentDescription",
+                    tint = Color.White,
+                )
+                Text(
+                    text = "Share",
+                    modifier = Modifier
+                        .weight(1f, false)
+                        .padding(start = 8.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.W500,
+                )
+            }
+        }
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MoreOptionsSong(
+    onDismiss: () -> Unit,
+    onDeleteSong: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState()
+    ModalBottomSheet(
+        onDismissRequest = { onDismiss() },
+        containerColor = Surface,
+        sheetState = sheetState,
+        dragHandle = { },
+    ) {
+        Column(modifier = Modifier.padding(vertical = 32.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onDeleteSong() }
+                    .padding(horizontal = 32.dp, vertical = 16.dp)) {
+                Icon(
+                    modifier = Modifier.size(36.dp),
+                    painter = painterResource(id = R.drawable.round_delete_forever_24),
+                    contentDescription = "contentDescription",
+                    tint = Color.White,
+                )
+                Text(
+                    text = "Delete from Playlist",
+                    modifier = Modifier
+                        .weight(1f, false)
+                        .padding(start = 8.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.W500,
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp, vertical = 16.dp)
+            ) {
+                Icon(
+                    modifier = Modifier.size(36.dp),
+                    painter = painterResource(id = R.drawable.ios_share_24px),
+                    contentDescription = "contentDescription",
+                    tint = Color.White,
+                )
+                Text(
+                    text = "Share",
+                    modifier = Modifier
+                        .weight(1f, false)
+                        .padding(start = 8.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.W500,
+                )
+            }
         }
     }
 }

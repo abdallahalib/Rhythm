@@ -250,6 +250,38 @@ class SongViewModel @Inject constructor(
             }
         }
     }
+
+    fun addToPlaylist(playlist: Playlist, song: Song) {
+        viewModelScope.launch {
+            repository.addPlaylistSong(song = song, playlist = playlist)
+            repository.getPlaylistSongs(playlist.id).collect {
+                if (playlist.id == 1) {
+                    favorites = it
+                }
+            }
+        }
+    }
+
+    fun deletePlaylist(playlist: Playlist) {
+        viewModelScope.launch {
+            repository.removePlaylist(playlist.id)
+            repository.getPlaylists().collect {
+                playlists = it
+            }
+        }
+    }
+
+    fun deletePlaylistSong(playlist: Playlist, song: Song) {
+        viewModelScope.launch {
+            repository.removePlaylistSong(songId = song.id, playlistId = playlist.id)
+            repository.getPlaylistSongs(playlist.id).collect {
+                if (playlist.id == 1) {
+                    favorites = it
+                }
+                playlistSongList = it
+            }
+        }
+    }
 }
 
 

@@ -15,5 +15,5 @@ interface PlaylistDao {
     fun insert(playlist: Playlist)
 
     @Query("DELETE FROM playlist WHERE id = :id")
-    fun delete(id: Long)
+    fun delete(id: Int)
 }

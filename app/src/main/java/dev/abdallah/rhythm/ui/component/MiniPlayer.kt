@@ -8,6 +8,7 @@ import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
 import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,11 +19,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,7 +48,11 @@ import androidx.compose.ui.unit.sp
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 import dev.abdallah.rhythm.R
+import dev.abdallah.rhythm.data.db.Playlist
 import dev.abdallah.rhythm.data.db.Song
+import dev.abdallah.rhythm.ui.screen.Playlists
+import dev.abdallah.rhythm.ui.theme.Gray
+import dev.abdallah.rhythm.ui.theme.Surface
 import dev.abdallah.rhythm.util.THUMBNAIL_SMALL_SIZE
 import dev.abdallah.rhythm.util.millisecondsToMinutes
 import dev.abdallah.rhythm.util.mirror
@@ -63,7 +72,35 @@ fun MiniPlayer(
     onPrevious: () -> Unit,
     isFavorite: Boolean,
     onFavorite: (Song) -> Unit,
+    playlists: List<Playlist>,
+    onAddToPlaylist: (Song, Playlist) -> Unit,
 ) {
+    var showMoreOptionsBottomSheet by remember {
+        mutableStateOf(false)
+    }
+    var showAddToPlaylistBottomSheet by remember {
+        mutableStateOf(false)
+    }
+    if (showMoreOptionsBottomSheet) {
+        MoreOptions(onDismiss = {
+            showMoreOptionsBottomSheet = false
+        }, onAddToPlaylist = {
+            showMoreOptionsBottomSheet = false
+            showAddToPlaylistBottomSheet = true
+        })
+    }
+    if (showAddToPlaylistBottomSheet) {
+        AddToPlaylist(
+            playlists = playlists,
+            onItemClick = { playlist ->
+                onAddToPlaylist(nowPlaying, playlist)
+                showAddToPlaylistBottomSheet = false
+            },
+            onDismiss = {
+                showAddToPlaylistBottomSheet = false
+            }
+        )
+    }
     val animatedPadding by animateDpAsState(
         targetValue = if (isPlaying) {
             24.dp
@@ -279,16 +316,119 @@ fun MiniPlayer(
                 }
                 IconButton(modifier = Modifier
                     .padding(8.dp)
-                    .size(32.dp),
-                    onClick = { /* Queue action */ }) {
+                    .size(32.dp), onClick = {
+                    showMoreOptionsBottomSheet = true
+                }) {
                     Icon(
-                        painter = painterResource(id = R.drawable.queue_music_24px),
-                        contentDescription = "Skip",
+                        painter = painterResource(id = R.drawable.round_more_horiz_24),
+                        contentDescription = "More",
                         tint = Color.White,
                         modifier = Modifier.mirror(),
                     )
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MoreOptions(
+    onDismiss: () -> Unit,
+    onAddToPlaylist: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState()
+    ModalBottomSheet(
+        onDismissRequest = { onDismiss() },
+        containerColor = Surface,
+        sheetState = sheetState,
+        dragHandle = { },
+    ) {
+        Column(modifier = Modifier.padding(vertical = 32.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onAddToPlaylist() }
+                    .padding(horizontal = 32.dp, vertical = 16.dp)) {
+                Icon(
+                    modifier = Modifier.size(36.dp),
+                    painter = painterResource(id = R.drawable.playlist_add_24px),
+                    contentDescription = "contentDescription",
+                    tint = Color.White,
+                )
+                Text(
+                    text = "Add to Playlist",
+                    modifier = Modifier
+                        .weight(1f, false)
+                        .padding(start = 8.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.W500,
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp, vertical = 16.dp)
+            ) {
+                Icon(
+                    modifier = Modifier.size(36.dp),
+                    painter = painterResource(id = R.drawable.ios_share_24px),
+                    contentDescription = "contentDescription",
+                    tint = Color.White,
+                )
+                Text(
+                    text = "Share",
+                    modifier = Modifier
+                        .weight(1f, false)
+                        .padding(start = 8.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.W500,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+fun AddToPlaylist(
+    playlists: List<Playlist>,
+    onItemClick: (Playlist) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState()
+    ModalBottomSheet(
+        onDismissRequest = { onDismiss() },
+        containerColor = Surface,
+        sheetState = sheetState,
+        dragHandle = { },
+    ) {
+        Column {
+            Text(
+                modifier = Modifier
+                    .padding(top = 36.dp)
+                    .align(Alignment.CenterHorizontally),
+                text = "Add to Playlist",
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.W600,
+            )
+            Playlists(
+                playlists = playlists,
+                onItemClick = {
+                    onItemClick(playlists[it])
+                },
+                showAddPlaylistButton = false,
+            )
         }
     }
 }

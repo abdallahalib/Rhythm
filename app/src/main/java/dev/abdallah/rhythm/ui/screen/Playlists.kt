@@ -33,15 +33,23 @@ import dev.abdallah.rhythm.ui.theme.Gray
 import dev.abdallah.rhythm.ui.theme.Surface
 
 @Composable
-fun Playlists(playlists: List<Playlist>, onItemClick: (Int) -> Unit, onNewPlaylist: (String) -> Unit) {
+fun Playlists(
+    playlists: List<Playlist>,
+    onItemClick: (Int) -> Unit,
+    onNewPlaylist: (String) -> Unit = {},
+    showAddPlaylistButton: Boolean = true
+) {
     Box(modifier = Modifier.fillMaxSize()) {
         var showDialog by remember {
             mutableStateOf(false)
         }
         PlaylistsList(playlists = playlists, onItemClick)
-        AddPlaylistButton(Modifier.align(Alignment.BottomEnd), onClick = {
-            showDialog = true
-        })
+        if (showAddPlaylistButton) {
+            AddPlaylistButton(
+                modifier = Modifier.align(Alignment.BottomEnd),
+                onClick = { showDialog = true }
+            )
+        }
         if (showDialog) {
             NewPlaylistDialog(
                 onConfirm = { playlistName ->

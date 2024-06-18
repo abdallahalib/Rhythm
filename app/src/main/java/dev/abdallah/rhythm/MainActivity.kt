@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
 import androidx.activity.compose.setContent
@@ -204,6 +205,17 @@ class MainActivity : ComponentActivity() {
                     onPlay = {
                         viewModel.setMediaItemList(playlistSongs)
                         viewModel.onUiEvents(UIEvents.ChangeSong(0))
+                    },
+                    onDeletePlaylist = {
+                        viewModel.deletePlaylist(playlist = it)
+                        viewModel.setMediaItemList(viewModel.songs)
+                        navController.popBackStack()
+                    },
+                    onDeletePlaylistSong = { song, playlist ->
+                        viewModel.deletePlaylistSong(
+                            playlist = playlist,
+                            song = song
+                        )
                     })
             }
 
@@ -295,23 +307,25 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(bottomSheetScaffoldState) {
             bottomSheetScaffoldState.bottomSheetState
             snapshotFlow { bottomSheetScaffoldState.bottomSheetState.requireOffset() }.collect { offset ->
-                    if (maxOffset == -1.0f) {
-                        maxOffset = offset
-                    }
-                    bottomSheetOffset = offset / maxOffset
+                if (maxOffset == -1.0f) {
+                    maxOffset = offset
                 }
+                bottomSheetOffset = offset / maxOffset
+            }
         }
 
         val artworkPalette = viewModel.nowPlaying.artworkLarge.takeIf { it.isNotEmpty() }
             ?.let { Palette.from(BitmapFactory.decodeFile(it)).generate() }
-        val vibrantColor = artworkPalette?.getVibrantColor(Color.White.toArgb()) ?: Color.White.toArgb()
+        val vibrantColor =
+            artworkPalette?.getVibrantColor(Color.White.toArgb()) ?: Color.White.toArgb()
         val mutedColor = artworkPalette?.getMutedColor(Color.Gray.toArgb()) ?: Color.Gray.toArgb()
         val dominantColor = artworkPalette?.getDominantColor(Surface.toArgb()) ?: Surface.toArgb()
         BottomSheetScaffold(
             scaffoldState = bottomSheetScaffoldState,
             sheetContent = {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    MiniPlayer(offset = bottomSheetOffset,
+                    MiniPlayer(
+                        offset = bottomSheetOffset,
                         progress = viewModel.progress,
                         mutedColor = Color(mutedColor),
                         vibrantColor = Color(vibrantColor),
@@ -332,6 +346,10 @@ class MainActivity : ComponentActivity() {
                         isFavorite = viewModel.favorites.contains(viewModel.nowPlaying),
                         onFavorite = {
                             viewModel.onFavorite(it)
+                        },
+                        playlists = viewModel.playlists,
+                        onAddToPlaylist = { song, playlist ->
+                            viewModel.addToPlaylist(song = song, playlist = playlist)
                         },
                     )
                 }
@@ -395,8 +413,8 @@ class MainActivity : ComponentActivity() {
                             Playlists(
                                 playlists = viewModel.playlists,
                                 onItemClick = {
-                                viewModel.selectPlaylist(viewModel.playlists[it])
-                                navController.navigate("playlist")
+                                    viewModel.selectPlaylist(viewModel.playlists[it])
+                                    navController.navigate("playlist")
                                 },
                                 onNewPlaylist = {
                                     viewModel.newPlaylist(it)

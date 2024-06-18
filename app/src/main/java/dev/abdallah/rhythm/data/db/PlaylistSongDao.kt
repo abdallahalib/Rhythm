@@ -18,6 +18,9 @@ interface PlaylistSongDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(playlistSong: PlaylistSong)
 
-    @Delete
-    fun delete(playlistSong: PlaylistSong)
+    @Query("DELETE FROM playlistsong WHERE songId = :songId AND playlistId = :playlistId")
+    fun delete(songId: Long, playlistId: Int)
+
+    @Query("DELETE FROM playlistsong WHERE playlistId = :playlistId")
+    fun deletePlaylist(playlistId: Int)
 }

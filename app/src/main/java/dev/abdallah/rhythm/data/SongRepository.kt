@@ -56,11 +56,12 @@ class SongRepository @Inject constructor(
     }
 
     suspend fun removePlaylistSong(songId: Long, playlistId: Int) = withContext(Dispatchers.IO) {
-        playlistSongDao.delete(PlaylistSong(playlistId = playlistId, songId = songId))
+        playlistSongDao.delete(songId = songId, playlistId = playlistId)
     }
 
-    suspend fun removePlaylist(playlistId: Long) = withContext(Dispatchers.IO) {
+    suspend fun removePlaylist(playlistId: Int) = withContext(Dispatchers.IO) {
         playlistDao.delete(playlistId)
+        playlistSongDao.deletePlaylist(playlistId)
     }
 
     suspend fun getSong(id: Long): Song = withContext(Dispatchers.IO) {
@@ -124,7 +125,7 @@ class SongRepository @Inject constructor(
     suspend fun onFavorite(song: Song) = withContext(Dispatchers.IO) {
         val favourites = playlistSongDao.get(1).first().filter { it.playlistId == 1 }
         if (favourites.any { it.songId == song.id }) {
-            playlistSongDao.delete(favourites.first { it.songId == song.id })
+            playlistSongDao.delete(songId = song.id, playlistId = 1)
         } else {
             playlistSongDao.insert(PlaylistSong(playlistId = 1, songId = song.id))
         }
