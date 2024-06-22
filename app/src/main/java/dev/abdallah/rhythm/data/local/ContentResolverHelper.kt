@@ -4,16 +4,15 @@ import android.content.ContentUris
 import android.content.Context
 import android.database.Cursor
 import android.graphics.Bitmap
-import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
 import android.util.Size
 import androidx.annotation.RequiresApi
 import androidx.annotation.WorkerThread
+import androidx.core.net.toUri
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.abdallah.rhythm.data.db.Song
-import dev.abdallah.rhythm.util.THUMBNAIL_SMALL_SIZE
 import dev.abdallah.rhythm.util.getScreenWidthInPx
 import dev.abdallah.rhythm.util.toPx
 import java.io.File
@@ -42,8 +41,10 @@ class ContentResolverHelper @Inject constructor(@ApplicationContext val context:
         return getCursorData()
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun getCursorData(): MutableList<Song> {
-        val songList = mutableListOf<Song>()
+        val songs = mutableListOf<Song>()
+
         mCursor = context.contentResolver.query(
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection, null, null, sortOrder
         )
@@ -70,7 +71,7 @@ class ContentResolverHelper @Inject constructor(@ApplicationContext val context:
                         val id = getLong(idColumn)
                         val artist = getString(artistColumn)
                         val artistId = getString(artistIdColumn)
-                        val duration = getInt(durationColumn)
+                        val duration = getLong(durationColumn)
                         val title = getString(titleColumn)
                         val uri = ContentUris.withAppendedId(
                             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id
@@ -78,17 +79,7 @@ class ContentResolverHelper @Inject constructor(@ApplicationContext val context:
                         val data = getString(dataColumn)
                         val album = getString(albumColumn)
                         val albumId = getLong(albumIdColumn)
-                        val artworkLarge = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            getAlbumArtworkPathLarge(albumId, uri)
-                        } else {
-                            getAlbumArtworkPathLegacy(albumId)
-                        }
-                        val artworkSmall = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            getAlbumArtworkPathSmall(albumId, uri)
-                        } else {
-                            artworkLarge
-                        }
-                        songList += Song(
+                        songs += Song(
                             uri = uri.toString(),
                             title = title,
                             artist = artist,
@@ -98,21 +89,17 @@ class ContentResolverHelper @Inject constructor(@ApplicationContext val context:
                             displayName = displayName,
                             data = data,
                             album = album,
-                            artworkSmall = artworkSmall,
-                            artworkLarge = artworkLarge,
-                            albumId = albumId
+                            albumId = albumId,
+                            artwork = getAlbumArtworkPathLarge(albumId, uri.toString()),
+                            folder =  File(data).parentFile?.path ?: "",
+
                         )
-
-
                     }
-
                 }
             }
-
-
         }
 
-        return songList
+        return songs
     }
 
     private fun getAlbumArtworkPathLegacy(albumId: Long): String {
@@ -138,15 +125,15 @@ class ContentResolverHelper @Inject constructor(@ApplicationContext val context:
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
-    private fun getAlbumArtworkPathSmall(albumId: Long, uri: Uri): String {
+    private fun getAlbumArtworkPathSmall(albumId: Long, uri: String): String {
         val file = File(context.filesDir, "${albumId}_small")
         if (file.exists()) {
             return file.path
         } else {
             try {
-                val size = THUMBNAIL_SMALL_SIZE.toPx(context).toInt()
+                val size = 64f.toPx(context).toInt()
                 val bitmap: Bitmap = context.contentResolver.loadThumbnail(
-                    uri, Size(size, size), null
+                    uri.toUri(), Size(size, size), null
                 )
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, file.outputStream())
                 return file.path
@@ -157,14 +144,14 @@ class ContentResolverHelper @Inject constructor(@ApplicationContext val context:
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
-    private fun getAlbumArtworkPathLarge(albumId: Long, uri: Uri): String {
+    private fun getAlbumArtworkPathLarge(albumId: Long, uri: String): String {
         val file = File(context.filesDir, "${albumId}_large")
         if (file.exists()) {
             return file.path
         } else {
             try {
                 val bitmap: Bitmap = context.contentResolver.loadThumbnail(
-                    uri, Size(thumbnailLargeSize, thumbnailLargeSize), null
+                    uri.toUri(), Size(thumbnailLargeSize, thumbnailLargeSize), null
                 )
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, file.outputStream())
                 return file.path

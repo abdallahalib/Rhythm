@@ -1,9 +1,10 @@
 package dev.abdallah.rhythm.data
 
+import android.util.Log
 import dev.abdallah.rhythm.data.db.Playlist
 import dev.abdallah.rhythm.data.db.PlaylistDao
-import dev.abdallah.rhythm.data.db.PlaylistSong
-import dev.abdallah.rhythm.data.db.PlaylistSongDao
+import dev.abdallah.rhythm.data.db.Queue
+import dev.abdallah.rhythm.data.db.QueueDao
 import dev.abdallah.rhythm.data.db.Song
 import dev.abdallah.rhythm.data.db.SongDao
 import dev.abdallah.rhythm.data.local.ContentResolverHelper
@@ -25,8 +26,8 @@ import javax.inject.Inject
 class SongRepository @Inject constructor(
     private val contentResolver: ContentResolverHelper,
     private val songDao: SongDao,
+    private val queueDao: QueueDao,
     private val playlistDao: PlaylistDao,
-    private val playlistSongDao: PlaylistSongDao
 ) {
 
     init {
@@ -37,31 +38,25 @@ class SongRepository @Inject constructor(
     }
 
     suspend fun addPlaylist(name: String) = withContext(Dispatchers.IO) {
-        playlistDao.insert(Playlist(name = name))
+        playlistDao.upsert(Playlist(name = name))
     }
 
     suspend fun getPlaylists(): Flow<List<Playlist>> = withContext(Dispatchers.IO) {
         return@withContext playlistDao.getAll()
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    suspend fun getPlaylistSongs(playlistId: Int): Flow<List<Song>> = withContext(Dispatchers.IO) {
-        playlistSongDao.get(playlistId).flatMapConcat { playlistSongs ->
-            songDao.getSongs(playlistSongs.map { it.songId })
+    suspend fun setQueue(songs: List<Song>) = withContext(Dispatchers.IO) {
+        val queue = mutableListOf<Queue>()
+        for (index in songs.indices) {
+            queue += Queue(id = songs[index].id, index = index)
         }
+        queueDao.delete()
+        queueDao.upsert(*queue.toTypedArray())
     }
 
-    suspend fun addPlaylistSong(song: Song, playlist: Playlist) = withContext(Dispatchers.IO) {
-        playlistSongDao.insert(PlaylistSong(playlistId = playlist.id, songId = song.id))
-    }
-
-    suspend fun removePlaylistSong(songId: Long, playlistId: Int) = withContext(Dispatchers.IO) {
-        playlistSongDao.delete(songId = songId, playlistId = playlistId)
-    }
-
-    suspend fun removePlaylist(playlistId: Int) = withContext(Dispatchers.IO) {
-        playlistDao.delete(playlistId)
-        playlistSongDao.deletePlaylist(playlistId)
+    suspend fun getQueue(): List<Song> = withContext(Dispatchers.IO) {
+        val queue = queueDao.get()
+        return@withContext songDao.getSongs(*queue.map { it.id }.toLongArray()).first()
     }
 
     suspend fun getSong(id: Long): Song = withContext(Dispatchers.IO) {
@@ -72,42 +67,41 @@ class SongRepository @Inject constructor(
         songDao.getAll().map { it }
     }
 
-    suspend fun getArtists(): Flow<List<Artist>> = withContext(Dispatchers.IO) {
-        songDao.getAll().map { songs ->
-            songs.distinctBy { it.artistId }.map { song ->
-                Artist(
-                    name = song.artist,
-                    id = song.artistId,
-                    artworkSmall = song.artworkSmall,
-                    artworkLarge = song.artworkLarge,
-                )
-            }
+
+    fun getArtists(songs: List<Song>): List<Artist> {
+        return songs.groupBy { it.artistId }.map { (id, list) ->
+            val song = songs.first()
+            Artist(
+                name = song.artist,
+                id = id,
+                artwork = song.artwork,
+                songs = list
+            )
         }
     }
 
-    suspend fun getAlbums(): Flow<List<Album>> = withContext(Dispatchers.IO) {
-        songDao.getAll().map { songs ->
-            songs.distinctBy { it.albumId }.map { song ->
-                Album(
-                    name = song.album,
-                    id = song.albumId,
-                    artworkSmall = song.artworkSmall,
-                    artworkLarge = song.artworkLarge,
-                )
-            }
+    fun getAlbums(songs: List<Song>): List<Album> {
+        return songs.groupBy { it.albumId }.map { (id, list) ->
+            val song = list.first()
+            Album(
+                name = song.album,
+                id = id,
+                artwork = song.artwork,
+                songs = list
+            )
         }
     }
 
-    suspend fun getFolders(): Flow<List<Folder>> = withContext(Dispatchers.IO) {
-        val folderSet = mutableSetOf<Folder>()
-        songDao.getAll().map { songs ->
-            songs.forEach { song ->
-                val parentFile = File(song.data).parentFile
-                val folder = Folder(parentFile?.path ?: "", parentFile?.name ?: "")
-                folderSet.add(folder)
+    fun getFolders(songs: List<Song>): List<Folder> {
+        return songs.groupBy { it.data.substringBeforeLast('/') }
+            .map { (path, songsInFolder) ->
+                val name = path.substringAfterLast('/')
+                Folder(
+                    path = path,
+                    name = name,
+                    songs = songsInFolder
+                )
             }
-            return@map folderSet.toList()
-        }
     }
 
     suspend fun refreshData() = withContext(Dispatchers.IO) {
@@ -119,15 +113,14 @@ class SongRepository @Inject constructor(
         val itemsToAdd = songs.filter { it.id !in existingSet }
 
         songDao.deleteAll(itemsToDelete)
-        songDao.insertAll(itemsToAdd)
+        songDao.upsert(*itemsToAdd.toTypedArray())
     }
 
-    suspend fun onFavorite(song: Song) = withContext(Dispatchers.IO) {
-        val favourites = playlistSongDao.get(1).first().filter { it.playlistId == 1 }
-        if (favourites.any { it.songId == song.id }) {
-            playlistSongDao.delete(songId = song.id, playlistId = 1)
-        } else {
-            playlistSongDao.insert(PlaylistSong(playlistId = 1, songId = song.id))
-        }
+    suspend fun addSong(playlist: Playlist, song: Song) = withContext(Dispatchers.IO) {
+        playlistDao.addSong(playlist, song)
+    }
+
+    suspend fun removeSong(playlist: Playlist, song: Song) = withContext(Dispatchers.IO) {
+        playlistDao.removeSong(playlist, song)
     }
 }

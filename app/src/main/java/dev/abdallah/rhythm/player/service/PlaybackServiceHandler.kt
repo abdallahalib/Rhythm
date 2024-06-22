@@ -2,223 +2,150 @@ package dev.abdallah.rhythm.player.service
 
 import android.util.Log
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+const val TAG = "PlaybackServiceHandler"
 
 class PlaybackServiceHandler @Inject constructor(
     private val exoPlayer: ExoPlayer,
 ) : Player.Listener {
+
     private val _playbackState: MutableStateFlow<PlaybackState> =
         MutableStateFlow(PlaybackState.Initial)
     val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
-
-    private var job: Job? = null
 
     init {
         exoPlayer.addListener(this)
     }
 
-    fun setMediaItemList(mediaItems: List<MediaItem>) {
-        exoPlayer.setMediaItems(mediaItems)
+    fun isRunning(): Boolean {
+        return exoPlayer.playbackState != Player.STATE_IDLE
+    }
+
+    fun getCurrentMediaItemIndex() = exoPlayer.currentMediaItemIndex
+
+    fun setMediaItemList(mediaItems: List<MediaItem>, index: Int) {
+        exoPlayer.setMediaItems(
+            mediaItems,
+            index,
+            0,
+        )
         exoPlayer.prepare()
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
-    fun onResume() {
-        if (exoPlayer.mediaItemCount > 0) {
-            _playbackState.value =
-                PlaybackState.NowPlaying(exoPlayer.currentMediaItem?.mediaId ?: "")
-            _playbackState.value =
-                PlaybackState.Playing(isPlaying = exoPlayer.isPlaying)
-            GlobalScope.launch(Dispatchers.Main) {
-                startProgressUpdate()
-            }
-        }
-    }
-
-    @OptIn(DelicateCoroutinesApi::class)
-    override fun onEvents(player: Player, events: Player.Events) {
-        Log.d("PlaybackServiceHandler", "Start events")
-        for (i in 0 until events.size()) {
-            Log.d("PlaybackServiceHandler", "onEvents: ${events.get(i)}")
-        }
-        Log.d("PlaybackServiceHandler", "End events")
-        when {
-            events.contains(Player.EVENT_MEDIA_METADATA_CHANGED) -> {
-                _playbackState.value =
-                    PlaybackState.NowPlaying(exoPlayer.currentMediaItem?.mediaId ?: "")
-            }
-
-            events.contains(Player.EVENT_PLAYBACK_STATE_CHANGED) -> {
-                onPlaybackStateChanged(exoPlayer.playbackState)
-            }
-
-            events.contains(Player.EVENT_PLAY_WHEN_READY_CHANGED) -> {
-                val isPlaying = exoPlayer.isPlaying
-                _playbackState.value =
-                    PlaybackState.Playing(
-                        isPlaying = isPlaying,
-                    )
-                if (isPlaying) {
-                    GlobalScope.launch(Dispatchers.Main) {
-                        startProgressUpdate()
-                    }
-                } else {
-                    stopProgressUpdate()
-                }
-            }
-        }
-    }
-
-    @androidx.annotation.OptIn(UnstableApi::class)
-    suspend fun onPlayerEvents(
-        playerEvent: PlayerEvent,
-        selectedAudioIndex: Int = -1,
-        seekPosition: Long = 0,
-    ) {
-        when (playerEvent) {
-            PlayerEvent.Backward -> exoPlayer.seekBack()
-            PlayerEvent.Forward -> exoPlayer.seekForward()
-            PlayerEvent.Next -> {
-                if (exoPlayer.hasNextMediaItem()) {
-                    exoPlayer.seekToNext()
-                } else {
-                    exoPlayer.seekTo(0, 0)
-                }
-            }
-
-            PlayerEvent.Previous -> {
-                if (exoPlayer.hasPreviousMediaItem()) {
-                    exoPlayer.seekToPrevious()
-                } else {
-                    exoPlayer.seekTo(exoPlayer.mediaItemCount - 1, 0)
-                }
-            }
-
-            PlayerEvent.PlayPause -> {
-                playOrPause()
-            }
-
-            PlayerEvent.SeekTo -> exoPlayer.seekTo(seekPosition)
-            PlayerEvent.ChangeSong -> {
-                exoPlayer.shuffleModeEnabled = false
-                when {
-                    selectedAudioIndex == exoPlayer.currentMediaItemIndex -> {
-                        playOrPause()
-                    }
-                    selectedAudioIndex < exoPlayer.mediaItemCount -> {
-                        exoPlayer.seekTo(selectedAudioIndex, 0)
-                        _playbackState.value = PlaybackState.Playing(
-                            isPlaying = true,
-                        )
-                        exoPlayer.playWhenReady = true
-                        startProgressUpdate()
-                    }
-                }
-            }
-
-            PlayerEvent.Stop -> stopProgressUpdate()
-            is PlayerEvent.UpdateProgress -> {
-                exoPlayer.seekTo(
-                    (exoPlayer.duration * playerEvent.newProgress).toLong()
-                )
-            }
-
-            is PlayerEvent.Shuffle -> {
-                exoPlayer.seekToDefaultPosition(playerEvent.start)
-                exoPlayer.shuffleModeEnabled = true
-            }
-        }
-    }
-
     override fun onPlaybackStateChanged(playbackState: Int) {
-        when (playbackState) {
-            ExoPlayer.STATE_BUFFERING -> _playbackState.value =
-                PlaybackState.Buffering(exoPlayer.currentPosition)
+        super.onPlaybackStateChanged(playbackState)
+        Log.d(TAG, "Playback state: $playbackState")
+    }
 
-            ExoPlayer.STATE_READY -> _playbackState.value =
-                PlaybackState.Ready(
-                    isPlaying = exoPlayer.isPlaying,
-                    id = exoPlayer.currentMediaItem?.mediaId ?: "",
-                    mediaItemCount = exoPlayer.mediaItemCount
+    override fun onIsPlayingChanged(isPlaying: Boolean) {
+        super.onIsPlayingChanged(isPlaying)
+        Log.d(TAG, "isPlaying: $isPlaying")
+        if (isPlaying) {
+            onPositionChanged()
+            _playbackState.update {
+                PlaybackState.Playing
+            }
+        } else if (exoPlayer.playbackState != Player.STATE_BUFFERING) {
+            _playbackState.update {
+                PlaybackState.Paused
+            }
+        }
+    }
+
+    @OptIn(DelicateCoroutinesApi::class)
+    fun onPositionChanged() {
+        GlobalScope.launch(Dispatchers.Main) {
+            while (exoPlayer.isPlaying) {
+                delay(500)
+                Log.d(
+                    TAG,
+                    (exoPlayer.currentPosition.toFloat() / exoPlayer.duration.toFloat()).toString()
                 )
+                _playbackState.update {
+                    PlaybackState.Progress(exoPlayer.currentPosition)
+                }
+            }
+        }
+    }
 
-            Player.STATE_ENDED -> {
-                exoPlayer.seekTo(0, 0)
+    override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+        super.onMediaMetadataChanged(mediaMetadata)
+        exoPlayer.currentMediaItem?.let { mediaItem ->
+            _playbackState.update {
+                PlaybackState.NowPlaying(
+                    index = exoPlayer.currentMediaItemIndex,
+                )
+            }
+        }
+    }
+
+    fun onPlayerEvent(event: PlayerEvent) {
+        when (event) {
+            is PlayerEvent.PlayPause -> {
+                if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
             }
 
-            Player.STATE_IDLE -> {
+            is PlayerEvent.Change -> {
+                exoPlayer.shuffleModeEnabled = false
+                exoPlayer.seekToDefaultPosition(event.position)
+                if (!exoPlayer.isPlaying) exoPlayer.play()
             }
 
+            is PlayerEvent.Next -> {
+                if (exoPlayer.hasNextMediaItem()) {
+                    exoPlayer.seekToNextMediaItem()
+                } else {
+                    exoPlayer.seekToDefaultPosition(0)
+                }
+            }
+
+            is PlayerEvent.Previous -> {
+                if (exoPlayer.hasPreviousMediaItem()) {
+                    exoPlayer.seekToPreviousMediaItem()
+                } else {
+                    exoPlayer.seekToDefaultPosition(exoPlayer.mediaItemCount - 1)
+                }
+            }
+
+            is PlayerEvent.Seek -> {
+                exoPlayer.seekTo(
+                    (event.position * exoPlayer.duration).toLong()
+                )
+            }
         }
     }
 
-    private suspend fun playOrPause() {
-        if (exoPlayer.isPlaying) {
-            exoPlayer.pause()
-            stopProgressUpdate()
-        } else {
-            exoPlayer.play()
-            _playbackState.value =
-                PlaybackState.NowPlaying(exoPlayer.currentMediaItem?.mediaId ?: "")
-            _playbackState.value = PlaybackState.Playing(
-                isPlaying = true,
-            )
-            startProgressUpdate()
-        }
-    }
-
-
-    private suspend fun startProgressUpdate() = job.run {
-        while (true) {
-            delay(500)
-            _playbackState.value = PlaybackState.Progress(exoPlayer.currentPosition)
-        }
-    }
-
-    private fun stopProgressUpdate() {
-        job?.cancel()
-        _playbackState.value = PlaybackState.Playing(
-            isPlaying = false,
-        )
-    }
-
-
+    fun isPlaying() = exoPlayer.isPlaying
 }
 
 sealed class PlayerEvent {
     data object PlayPause : PlayerEvent()
-    data object ChangeSong : PlayerEvent()
-    data object Backward : PlayerEvent()
+    data class Change(val position: Int) : PlayerEvent()
     data object Next : PlayerEvent()
     data object Previous : PlayerEvent()
-    data object Forward : PlayerEvent()
-    data object SeekTo : PlayerEvent()
-    data object Stop : PlayerEvent()
-    data class UpdateProgress(val newProgress: Float) : PlayerEvent()
-    data class Shuffle(val start: Int) : PlayerEvent()
+    data class Seek(val position: Float) : PlayerEvent()
 }
 
 sealed class PlaybackState {
     data object Initial : PlaybackState()
-    data class Ready(val id: String, val isPlaying: Boolean, val mediaItemCount: Int) :
-        PlaybackState()
-
-    data class Progress(val progress: Long) : PlaybackState()
-    data class Buffering(val progress: Long) : PlaybackState()
-    data class Playing(val isPlaying: Boolean) : PlaybackState()
-    data class NowPlaying(val id: String) : PlaybackState()
+    data object Playing : PlaybackState()
+    data object Paused : PlaybackState()
+    data class Progress(val position: Long) : PlaybackState()
+    data class NowPlaying(val index: Int) : PlaybackState()
+    data class Error(val message: String) : PlaybackState()
 }
 
 

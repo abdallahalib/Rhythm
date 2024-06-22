@@ -2,7 +2,9 @@ package dev.abdallah.rhythm.player.service
 
 import android.content.Intent
 import android.os.Build
+import androidx.annotation.OptIn
 import androidx.media3.common.Player
+import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -29,9 +31,12 @@ class PlaybackService : MediaSessionService() {
         return super.onStartCommand(intent, flags, startId)
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession =
-        mediaSession
+    @OptIn(UnstableApi::class)
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession {
+        return mediaSession
+    }
 
+    @OptIn(UnstableApi::class)
     override fun onDestroy() {
         super.onDestroy()
         mediaSession.apply {

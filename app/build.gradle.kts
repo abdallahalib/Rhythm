@@ -95,4 +95,6 @@ dependencies {
     implementation(libs.room.runtime)
     ksp(libs.room.compiler)
     implementation(libs.room.ktx)
+    implementation(libs.constraintlayout.compose)
+    implementation(libs.gson)
 }

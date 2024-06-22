@@ -9,7 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.abdallah.rhythm.data.db.AppDatabase
 import dev.abdallah.rhythm.data.db.PlaylistDao
-import dev.abdallah.rhythm.data.db.PlaylistSongDao
+import dev.abdallah.rhythm.data.db.QueueDao
 import dev.abdallah.rhythm.data.db.SongDao
 import javax.inject.Singleton
 
@@ -39,7 +39,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun providePlaylistSongDao(appDatabase: AppDatabase) : PlaylistSongDao {
-        return appDatabase.playlistSongDao()
+    fun provideQueueDao(appDatabase: AppDatabase) : QueueDao {
+        return appDatabase.queueDao()
     }
 }

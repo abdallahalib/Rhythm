@@ -1,9 +1,9 @@
-package dev.abdallah.rhythm.ui.screen
+package dev.abdallah.rhythm.ui.screen.albums
 
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -21,71 +21,89 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.palette.graphics.Palette
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 import dev.abdallah.rhythm.R
-import dev.abdallah.rhythm.data.db.Song
-import dev.abdallah.rhythm.data.local.model.Artist
+import dev.abdallah.rhythm.Screen
+import dev.abdallah.rhythm.ui.screen.Song
 import dev.abdallah.rhythm.ui.theme.Background
 import dev.abdallah.rhythm.ui.theme.Blue
 import dev.abdallah.rhythm.ui.theme.Gray
 import dev.abdallah.rhythm.ui.theme.SemiTransparent
+import dev.abdallah.rhythm.ui.viewmodel.SongEvent
+import dev.abdallah.rhythm.ui.viewmodel.SongFilter
+import dev.abdallah.rhythm.ui.viewmodel.SongState
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
-fun ArtistView(
-    artist: Artist,
-    songs: List<Song>,
-    nowPlaying: Song,
-    onItemClick: (Int) -> Unit,
-    onPlay: () -> Unit,
-    onShuffle: () -> Unit,
-    onBack: () -> Unit,
+fun AlbumScreen(
+    state: SongState,
+    onEvent: (SongEvent) -> Unit
 ) {
-      LazyColumn(
+    val album = state.filter as SongFilter.Album
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(Background),
     ) {
         item {
-            val artworkPalette = artist.artworkLarge.takeIf { it.isNotEmpty() }
-                ?.let { Palette.from(BitmapFactory.decodeFile(it)).generate() }
-            val darkMutedColor = artworkPalette?.getDarkMutedColor(Gray.toArgb()) ?: Gray.toArgb()
-            val brush = Brush.verticalGradient(listOf(Color(darkMutedColor), Background))
+            val brush = Brush.verticalGradient(listOf(Gray, Background))
             Column(
-                modifier = Modifier.fillMaxWidth().background(brush)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(brush)
             ) {
-                IconButton(
+                Row(
                     modifier = Modifier
-                        .align(Alignment.Start)
-                        .padding(start = 24.dp, top = 56.dp)
-                        .background(SemiTransparent, CircleShape)
-                        .padding(10.dp)
-                        .size(24.dp),
-                    onClick = { onBack() }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.round_arrow_back_ios_24),
-                        contentDescription = "Back",
-                        tint = Color.White,
-                    )
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .padding(top = 56.dp)
+                ) {
+                    IconButton(
+                        modifier = Modifier
+                            .background(SemiTransparent, CircleShape)
+                            .padding(12.dp)
+                            .size(24.dp),
+                        onClick = {
+                            onEvent(SongEvent.Navigate(screen = Screen.HOME)
+                        ) }) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.round_arrow_back_ios_24),
+                            contentDescription = "Back",
+                            tint = Color.White,
+                        )
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    IconButton(
+                        modifier = Modifier
+                            .background(SemiTransparent, CircleShape)
+                            .padding(12.dp)
+                            .size(24.dp),
+                        onClick = {  }) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.round_more_vert_24),
+                            contentDescription = "More options",
+                            tint = Color.White,
+                        )
+                    }
                 }
                 GlideImage(
-                    model = artist.artworkLarge,
-                    contentDescription = "Album Art",
+                    model = album.album.artwork,
+                    contentScale = ContentScale.Crop,
+                    contentDescription = "Album artwork",
                     modifier = Modifier
                         .padding(top = 24.dp)
                         .size(192.dp)
                         .align(Alignment.CenterHorizontally)
-                        .clip(CircleShape),
+                        .clip(CircleShape)
                 )
                 Text(
-                    text = artist.name,
+                    text = album.album.name,
                     modifier = Modifier
                         .padding(top = 36.dp)
                         .align(Alignment.CenterHorizontally),
@@ -94,7 +112,7 @@ fun ArtistView(
                     fontWeight = FontWeight.W600
                 )
                 Text(
-                    text = "${songs.size} Songs",
+                    text = "${album.album.songs.size} Songs",
                     modifier = Modifier
                         .padding(top = 16.dp)
                         .align(Alignment.CenterHorizontally),
@@ -111,7 +129,7 @@ fun ArtistView(
                         modifier = Modifier
                             .weight(1f)
                             .padding(start = 16.dp, end = 8.dp),
-                        onClick = { onPlay() },
+                        onClick = { onEvent(SongEvent.Change(album.album.songs, 0)) },
                         colors = ButtonColors(
                             containerColor = Gray,
                             contentColor = Blue,
@@ -139,7 +157,7 @@ fun ArtistView(
                             .weight(1f)
                             .padding(start = 8.dp, end = 16.dp),
                         onClick = {
-                            onShuffle()
+                            onEvent(SongEvent.Shuffle(album.album.songs))
                         },
                         colors = ButtonColors(
                             containerColor = Gray,
@@ -166,12 +184,12 @@ fun ArtistView(
                 }
             }
         }
-        items(songs.size, key = { songs[it].id }) {
+        items(album.album.songs.size, key = { album.album.songs[it].id }) {
             Song(
-                songs = songs,
+                state = state,
+                songs = album.album.songs,
                 position = it,
-                onItemClick = onItemClick,
-                nowPlaying = nowPlaying
+                onEvent = { event -> onEvent(event) }
             )
         }
     }

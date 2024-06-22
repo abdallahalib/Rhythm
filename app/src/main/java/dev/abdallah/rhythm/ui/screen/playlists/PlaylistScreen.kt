@@ -1,8 +1,9 @@
-package dev.abdallah.rhythm.ui.screen
+package dev.abdallah.rhythm.ui.screen.playlists
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -26,58 +27,77 @@ import androidx.compose.ui.unit.sp
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 import dev.abdallah.rhythm.R
-import dev.abdallah.rhythm.data.db.Song
-import dev.abdallah.rhythm.data.local.model.Folder
+import dev.abdallah.rhythm.Screen
+import dev.abdallah.rhythm.ui.screen.Song
 import dev.abdallah.rhythm.ui.theme.Background
 import dev.abdallah.rhythm.ui.theme.Blue
 import dev.abdallah.rhythm.ui.theme.Gray
 import dev.abdallah.rhythm.ui.theme.SemiTransparent
+import dev.abdallah.rhythm.ui.viewmodel.SongEvent
+import dev.abdallah.rhythm.ui.viewmodel.SongFilter
+import dev.abdallah.rhythm.ui.viewmodel.SongState
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
-fun FolderView(
-    folder: Folder,
-    songs: List<Song>,
-    nowPlaying: Song,
-    onItemClick: (Int) -> Unit,
-    onPlay: () -> Unit,
-    onShuffle: () -> Unit,
-    onBack: () -> Unit,
+fun PlaylistScreen(
+    state: SongState,
+    onEvent: (SongEvent) -> Unit
 ) {
+    val playlist = state.filter as SongFilter.Playlist
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(Background),
     ) {
         item {
-            val brush = Brush.verticalGradient(listOf(Blue, Background))
+            val brush = Brush.verticalGradient(listOf(Gray, Background))
             Column(
-                modifier = Modifier.fillMaxWidth().background(brush)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(brush)
             ) {
-                IconButton(
+                Row(
                     modifier = Modifier
-                        .align(Alignment.Start)
-                        .padding(start = 24.dp, top = 56.dp)
-                        .background(SemiTransparent, CircleShape)
-                        .padding(10.dp)
-                        .size(24.dp),
-                    onClick = { onBack() }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.round_arrow_back_ios_24),
-                        contentDescription = "Back",
-                        tint = Color.White,
-                    )
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .padding(top = 56.dp)
+                ) {
+                    IconButton(
+                        modifier = Modifier
+                            .background(SemiTransparent, CircleShape)
+                            .padding(12.dp)
+                            .size(24.dp),
+                        onClick = { onEvent(SongEvent.Navigate(screen = Screen.HOME)) }) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.round_arrow_back_ios_24),
+                            contentDescription = "Back",
+                            tint = Color.White,
+                        )
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    IconButton(
+                        modifier = Modifier
+                            .background(SemiTransparent, CircleShape)
+                            .padding(12.dp)
+                            .size(24.dp),
+                        onClick = {  }) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.round_more_vert_24),
+                            contentDescription = "More options",
+                            tint = Color.White,
+                        )
+                    }
                 }
                 GlideImage(
-                    model = R.drawable.folder,
-                    contentDescription = "Folder icon",
+                    model = R.drawable.round_audiotrack_24,
+                    contentDescription = "Playlist artwork",
                     modifier = Modifier
                         .padding(top = 24.dp)
                         .size(192.dp)
                         .align(Alignment.CenterHorizontally)
                 )
                 Text(
-                    text = folder.name,
+                    text = playlist.playlist.name,
                     modifier = Modifier
                         .padding(top = 36.dp)
                         .align(Alignment.CenterHorizontally),
@@ -86,7 +106,7 @@ fun FolderView(
                     fontWeight = FontWeight.W600
                 )
                 Text(
-                    text = "${songs.size} Songs",
+                    text = "${playlist.playlist.songs.size} Songs",
                     modifier = Modifier
                         .padding(top = 16.dp)
                         .align(Alignment.CenterHorizontally),
@@ -103,7 +123,7 @@ fun FolderView(
                         modifier = Modifier
                             .weight(1f)
                             .padding(start = 16.dp, end = 8.dp),
-                        onClick = { onPlay() },
+                        onClick = { onEvent(SongEvent.Change(playlist.playlist.songs, 0)) },
                         colors = ButtonColors(
                             containerColor = Gray,
                             contentColor = Blue,
@@ -131,7 +151,7 @@ fun FolderView(
                             .weight(1f)
                             .padding(start = 8.dp, end = 16.dp),
                         onClick = {
-                            onShuffle()
+                            onEvent(SongEvent.Shuffle(playlist.playlist.songs))
                         },
                         colors = ButtonColors(
                             containerColor = Gray,
@@ -158,12 +178,12 @@ fun FolderView(
                 }
             }
         }
-        items(songs.size, key = { songs[it].id }) {
+        items(playlist.playlist.songs.size, key = { playlist.playlist.songs[it].id }) {
             Song(
-                songs = songs,
+                state = state,
+                songs = playlist.playlist.songs,
                 position = it,
-                onItemClick = onItemClick,
-                nowPlaying = nowPlaying
+                onEvent = { event -> onEvent(event) }
             )
         }
     }

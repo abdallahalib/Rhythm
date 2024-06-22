@@ -6,7 +6,6 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
 import androidx.activity.compose.setContent
@@ -26,55 +25,52 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.palette.graphics.Palette
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.PermissionStatus
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.android.material.color.DynamicColors
 import dagger.hilt.android.AndroidEntryPoint
 import dev.abdallah.rhythm.player.service.PlaybackService
 import dev.abdallah.rhythm.ui.component.Category
 import dev.abdallah.rhythm.ui.component.MiniPlayer
-import dev.abdallah.rhythm.ui.screen.AlbumView
-import dev.abdallah.rhythm.ui.screen.Albums
-import dev.abdallah.rhythm.ui.screen.ArtistView
-import dev.abdallah.rhythm.ui.screen.Artists
-import dev.abdallah.rhythm.ui.screen.FolderView
-import dev.abdallah.rhythm.ui.screen.Folders
-import dev.abdallah.rhythm.ui.screen.PlaylistView
-import dev.abdallah.rhythm.ui.screen.Playlists
 import dev.abdallah.rhythm.ui.screen.Songs
+import dev.abdallah.rhythm.ui.screen.albums.AlbumScreen
+import dev.abdallah.rhythm.ui.screen.albums.Albums
+import dev.abdallah.rhythm.ui.screen.artists.ArtistScreen
+import dev.abdallah.rhythm.ui.screen.artists.Artists
+import dev.abdallah.rhythm.ui.screen.folders.FolderScreen
+import dev.abdallah.rhythm.ui.screen.folders.Folders
+import dev.abdallah.rhythm.ui.screen.playlists.PlaylistScreen
+import dev.abdallah.rhythm.ui.screen.playlists.Playlists
 import dev.abdallah.rhythm.ui.theme.Background
 import dev.abdallah.rhythm.ui.theme.RhythmTheme
 import dev.abdallah.rhythm.ui.theme.Surface
+import dev.abdallah.rhythm.ui.viewmodel.SongEvent
+import dev.abdallah.rhythm.ui.viewmodel.SongFilter
+import dev.abdallah.rhythm.ui.viewmodel.SongState
 import dev.abdallah.rhythm.ui.viewmodel.SongViewModel
-import dev.abdallah.rhythm.ui.viewmodel.UIEvents
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
-import kotlin.random.Random
 
 private val categories = listOf("Songs", "Playlists", "Folders", "Artists", "Albums")
 
@@ -83,12 +79,12 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: SongViewModel by viewModels()
     private var isServiceRunning = false
-    private var maxOffset = -1.0f
 
     @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+
             val permissionState = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 rememberPermissionState(
                     permission = READ_MEDIA_AUDIO,
@@ -98,9 +94,7 @@ class MainActivity : ComponentActivity() {
                     permission = READ_EXTERNAL_STORAGE
                 )
             }
-            if (permissionState.status == PermissionStatus.Granted) {
-                viewModel.refreshData()
-            }
+
             val lifecycleOwner = LocalLifecycleOwner.current
             DisposableEffect(key1 = lifecycleOwner) {
                 val observer = LifecycleEventObserver { _, event ->
@@ -113,9 +107,11 @@ class MainActivity : ComponentActivity() {
                     lifecycleOwner.lifecycle.removeObserver(observer)
                 }
             }
+            startService()
             RhythmTheme {
                 DynamicColors.applyToActivityIfAvailable(this@MainActivity)
-                Home()
+                val state by viewModel.state.collectAsState()
+                Home(state = state, onEvent = { viewModel.onEvent(it) })
             }
         }
     }
@@ -134,243 +130,120 @@ class MainActivity : ComponentActivity() {
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
-    @Preview
     @Composable
-    fun Home() {
-        val coroutineScope = rememberCoroutineScope()
-        val bottomSheetScaffoldState = rememberBottomSheetScaffoldState()
+    fun Home(
+        state: SongState, onEvent: (SongEvent) -> Unit
+    ) {
         val navController = rememberNavController()
+        val bottomSheetScaffoldState = rememberBottomSheetScaffoldState()
+        val coroutineScope = rememberCoroutineScope()
 
-        LaunchedEffect(navController) {
-            snapshotFlow { navController.currentDestination?.label }.collect {
-                if (it == "home") {
-                    coroutineScope.launch {
-                        viewModel.setMediaItemList(viewModel.songs)
+        LaunchedEffect(state.screen) {
+            snapshotFlow { state.screen }.distinctUntilChanged().collect { screen ->
+                val currentRoute = navController.currentDestination?.route
+                if (screen.route != currentRoute) {
+                    if (screen.route == Screen.HOME.route) {
+                        navController.popBackStack()
+                    } else {
+                        navController.navigate(screen.route)
                     }
                 }
             }
         }
-
-        LaunchedEffect(viewModel.nowPlaying) {
-            snapshotFlow { viewModel.nowPlaying }.distinctUntilChanged().collect {
-                startService()
-            }
-        }
-
-        onBackPressedDispatcher.addCallback {
-            if (bottomSheetScaffoldState.bottomSheetState.requireOffset() == 0.0f) {
-                coroutineScope.launch {
-                    bottomSheetScaffoldState.bottomSheetState.partialExpand()
-                }
-            } else {
-                if (navController.currentDestination?.route != "home") {
-                    navController.popBackStack()
-                } else {
-                    isEnabled = false
-                    finish()
-                }
-            }
-        }
-
         NavHost(navController = navController, startDestination = "home", enterTransition = {
             fadeIn(animationSpec = tween(250))
         }, exitTransition = { fadeOut(animationSpec = tween(250)) }) {
 
-            composable("home") {
+            composable(Screen.HOME.route) {
                 MainScreen(
-                    bottomSheetScaffoldState = bottomSheetScaffoldState,
-                    navController = navController
+                    state = state,
                 )
             }
 
-            composable("playlist") {
-                val playlistSongs = viewModel.getPlaylistSongs()
-                PlaylistView(playlist = viewModel.selectedPlaylist,
-                    songs = playlistSongs,
-                    nowPlaying = viewModel.nowPlaying,
-                    onItemClick = {
-                        viewModel.setMediaItemList(playlistSongs)
-                        viewModel.onUiEvents(UIEvents.ChangeSong(it))
-                        coroutineScope.launch {
-                            bottomSheetScaffoldState.bottomSheetState.expand()
-                        }
-                    },
-                    onShuffle = {
-                        viewModel.setMediaItemList(playlistSongs)
-                        viewModel.onUiEvents(UIEvents.Shuffle(Random.nextInt(viewModel.getFolderSongs().size)))
-                    },
-                    onBack = {
-                        navController.popBackStack()
-                    },
-                    onPlay = {
-                        viewModel.setMediaItemList(playlistSongs)
-                        viewModel.onUiEvents(UIEvents.ChangeSong(0))
-                    },
-                    onDeletePlaylist = {
-                        viewModel.deletePlaylist(playlist = it)
-                        viewModel.setMediaItemList(viewModel.songs)
-                        navController.popBackStack()
-                    },
-                    onDeletePlaylistSong = { song, playlist ->
-                        viewModel.deletePlaylistSong(
-                            playlist = playlist,
-                            song = song
-                        )
-                    })
+            composable(Screen.PLAYLIST.route) {
+                PlaylistScreen(
+                    state = state,
+                    onEvent = { onEvent(it) },
+                )
             }
 
-            composable("folder") {
-                val folderSongs = viewModel.getFolderSongs()
-                FolderView(folder = viewModel.selectedFolder,
-                    songs = folderSongs,
-                    nowPlaying = viewModel.nowPlaying,
-                    onItemClick = {
-                        viewModel.setMediaItemList(folderSongs)
-                        viewModel.onUiEvents(UIEvents.ChangeSong(it))
-                        coroutineScope.launch {
-                            bottomSheetScaffoldState.bottomSheetState.expand()
-                        }
-                    },
-                    onShuffle = {
-                        viewModel.setMediaItemList(folderSongs)
-                        viewModel.onUiEvents(UIEvents.Shuffle(Random.nextInt(viewModel.getFolderSongs().size)))
-                    },
-                    onBack = {
-                        navController.popBackStack()
-                    },
-                    onPlay = {
-                        viewModel.setMediaItemList(folderSongs)
-                        viewModel.onUiEvents(UIEvents.ChangeSong(0))
-                    })
+            composable(Screen.FOLDER.route) {
+                FolderScreen(state = state, onEvent = { onEvent(it) })
             }
 
-            composable("artist") {
-                val artistSongs = viewModel.getArtistSongs()
-                ArtistView(artist = viewModel.selectedArtist,
-                    songs = artistSongs,
-                    nowPlaying = viewModel.nowPlaying,
-                    onItemClick = {
-                        viewModel.setMediaItemList(artistSongs)
-                        viewModel.onUiEvents(UIEvents.ChangeSong(it))
-                        coroutineScope.launch {
-                            bottomSheetScaffoldState.bottomSheetState.expand()
-                        }
-                    },
-                    onShuffle = {
-                        viewModel.setMediaItemList(artistSongs)
-                        viewModel.onUiEvents(UIEvents.Shuffle(Random.nextInt(viewModel.getArtistSongs().size)))
-                    },
-                    onBack = {
-                        navController.popBackStack()
-                    },
-                    onPlay = {
-                        viewModel.setMediaItemList(artistSongs)
-                        viewModel.onUiEvents(UIEvents.ChangeSong(0))
-                    })
+            composable(Screen.ARTIST.route) {
+                ArtistScreen(state = state, onEvent = { onEvent(it) })
             }
 
-            composable("album") {
-                val albumSongs = viewModel.getAlbumSongs()
-                AlbumView(album = viewModel.selectedAlbum,
-                    songs = albumSongs,
-                    nowPlaying = viewModel.nowPlaying,
-                    onItemClick = {
-                        viewModel.setMediaItemList(albumSongs)
-                        viewModel.onUiEvents(UIEvents.ChangeSong(it))
-                        coroutineScope.launch {
-                            bottomSheetScaffoldState.bottomSheetState.expand()
-                        }
-                    },
-                    onShuffle = {
-                        viewModel.setMediaItemList(albumSongs)
-                        viewModel.onUiEvents(UIEvents.Shuffle(Random.nextInt(viewModel.getAlbumSongs().size)))
-                    },
-                    onBack = {
-                        navController.popBackStack()
-                    },
-                    onPlay = {
-                        viewModel.setMediaItemList(albumSongs)
-                        viewModel.onUiEvents(UIEvents.ChangeSong(0))
-                    })
+            composable(Screen.ALBUM.route) {
+                AlbumScreen(state = state, onEvent = { onEvent(it) })
             }
         }
 
-        BottomSheet(bottomSheetScaffoldState)
+        onBackPressedDispatcher.addCallback {
+            if (bottomSheetScaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) {
+                coroutineScope.launch {
+                    bottomSheetScaffoldState.bottomSheetState.partialExpand()
+                }
+            } else if (state.screen.route != Screen.HOME.route) {
+                navController.popBackStack()
+            } else {
+                finish()
+            }
+        }
+
+        BottomSheet(state, bottomSheetScaffoldState)
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun BottomSheet(bottomSheetScaffoldState: BottomSheetScaffoldState) {
+    fun BottomSheet(state: SongState, bottomSheetScaffoldState: BottomSheetScaffoldState) {
+        val defaultPrimaryColor = Color.White.toArgb()
+        val defaultAccentColor = Color.Gray.toArgb()
+        val defaultSheetContainerColor = Surface.toArgb()
 
-        var bottomSheetOffset by remember { mutableFloatStateOf(1f) }
+        val artworkPath = state.queue.getOrNull(state.index)?.artwork
 
-        LaunchedEffect(bottomSheetScaffoldState) {
-            bottomSheetScaffoldState.bottomSheetState
-            snapshotFlow { bottomSheetScaffoldState.bottomSheetState.requireOffset() }.collect { offset ->
-                if (maxOffset == -1.0f) {
-                    maxOffset = offset
-                }
-                bottomSheetOffset = offset / maxOffset
-            }
+        val artworkPalette = if (!artworkPath.isNullOrBlank()) {
+            Palette.from(BitmapFactory.decodeFile(artworkPath)).generate()
+        } else {
+            null
         }
 
-        val artworkPalette = viewModel.nowPlaying.artworkLarge.takeIf { it.isNotEmpty() }
-            ?.let { Palette.from(BitmapFactory.decodeFile(it)).generate() }
-        val vibrantColor =
-            artworkPalette?.getVibrantColor(Color.White.toArgb()) ?: Color.White.toArgb()
-        val mutedColor = artworkPalette?.getMutedColor(Color.Gray.toArgb()) ?: Color.Gray.toArgb()
-        val dominantColor = artworkPalette?.getDominantColor(Surface.toArgb()) ?: Surface.toArgb()
+        val primaryColor =
+            artworkPalette?.getVibrantColor(defaultPrimaryColor) ?: defaultPrimaryColor
+        val accentColor = artworkPalette?.getMutedColor(defaultAccentColor) ?: defaultAccentColor
+        val sheetContainerColor = artworkPalette?.getDominantColor(defaultSheetContainerColor)
+            ?: defaultSheetContainerColor
         BottomSheetScaffold(
             scaffoldState = bottomSheetScaffoldState,
             sheetContent = {
                 Box(modifier = Modifier.fillMaxSize()) {
                     MiniPlayer(
-                        offset = bottomSheetOffset,
-                        progress = viewModel.progress,
-                        mutedColor = Color(mutedColor),
-                        vibrantColor = Color(vibrantColor),
-                        onProgress = {
-                            viewModel.onUiEvents(UIEvents.SeekTo(it))
-                        },
-                        isPlaying = viewModel.isPlaying,
-                        nowPlaying = viewModel.nowPlaying,
-                        onStart = {
-                            viewModel.onUiEvents(UIEvents.PlayPause)
-                        },
-                        onNext = {
-                            viewModel.onUiEvents(UIEvents.Next)
-                        },
-                        onPrevious = {
-                            viewModel.onUiEvents(UIEvents.Previous)
-                        },
-                        isFavorite = viewModel.favorites.contains(viewModel.nowPlaying),
-                        onFavorite = {
-                            viewModel.onFavorite(it)
-                        },
-                        playlists = viewModel.playlists,
-                        onAddToPlaylist = { song, playlist ->
-                            viewModel.addToPlaylist(song = song, playlist = playlist)
-                        },
+                        state = state,
+                        onEvent = { viewModel.onEvent(it) },
+                        primaryColor = Color(primaryColor),
+                        accentColor = Color(accentColor),
+                        sheetContainerColor = Color(sheetContainerColor),
+                        targetValue = bottomSheetScaffoldState.bottomSheetState.targetValue,
                     )
                 }
             },
             sheetPeekHeight = 96.dp,
             sheetDragHandle = null,
-            sheetContainerColor = Color(dominantColor),
+            sheetContainerColor = Color(sheetContainerColor),
         ) {
 
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun MainScreen(
-        bottomSheetScaffoldState: BottomSheetScaffoldState, navController: NavHostController
-    ) {
+    fun MainScreen(state: SongState) {
         // Main Content
         val coroutineScope = rememberCoroutineScope()
         val pagerState = rememberPagerState { categories.size }
         val lazyRowState = rememberLazyListState()
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -394,61 +267,30 @@ class MainActivity : ComponentActivity() {
             HorizontalPager(modifier = Modifier.weight(1f), state = pagerState) { page ->
                 when (page) {
                     0 -> {
-                        Songs(songs = viewModel.songs,
-                            nowPlaying = viewModel.nowPlaying,
-                            onItemClick = {
-                                viewModel.setMediaItemList(viewModel.songs)
-                                viewModel.onUiEvents(UIEvents.ChangeSong(it))
-                                coroutineScope.launch(Dispatchers.Default) {
-                                    bottomSheetScaffoldState.bottomSheetState.expand()
-                                }
-                            },
-                            onShuffle = {
-                                viewModel.onUiEvents(UIEvents.Shuffle(Random.nextInt(viewModel.songs.size)))
-                            })
+                        Songs(state = state, onEvent = { viewModel.onEvent(it) })
                     }
 
                     1 -> {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            Playlists(
-                                playlists = viewModel.playlists,
-                                onItemClick = {
-                                    viewModel.selectPlaylist(viewModel.playlists[it])
-                                    navController.navigate("playlist")
-                                },
-                                onNewPlaylist = {
-                                    viewModel.newPlaylist(it)
-                                }
-                            )
-                        }
+                        Playlists(state = state, onEvent = { viewModel.onEvent(it) })
                     }
 
                     2 -> {
-                        Folders(folderList = viewModel.folderList, onItemClick = {
-                            viewModel.selectFolder(viewModel.folderList[it])
-                            navController.navigate("folder")
-                        })
+                        Folders(state = state, onEvent = { viewModel.onEvent(it) })
                     }
 
                     3 -> {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            Artists(artistList = viewModel.artistList, onItemClick = {
-                                viewModel.selectArtist(viewModel.artistList[it])
-                                navController.navigate("artist")
-                            })
-                        }
+                        Artists(state = state, onEvent = { viewModel.onEvent(it) })
                     }
 
                     4 -> {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            Albums(albumsList = viewModel.albumList, onItemClick = {
-                                viewModel.selectAlbum(viewModel.albumList[it])
-                                navController.navigate("album")
-                            })
-                        }
+                        Albums(state = state, onEvent = { viewModel.onEvent(it) })
                     }
                 }
             }
         }
     }
+}
+
+enum class Screen(val route: String) {
+    HOME("home"), FOLDER("folder"), ARTIST("artist"), ALBUM("album"), PLAYLIST("playlist")
 }

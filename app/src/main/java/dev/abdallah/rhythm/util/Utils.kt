@@ -10,7 +10,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 
-fun millisecondsToMinutes(milliseconds: Int): String {
+fun millisecondsToMinutes(milliseconds: Long): String {
     val seconds = milliseconds / 1000
     val minutes = seconds / 60
     val remainingSeconds = seconds % 60

@@ -18,25 +18,23 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import dev.abdallah.rhythm.R
-import dev.abdallah.rhythm.data.db.Song
 import dev.abdallah.rhythm.ui.theme.Blue
 import dev.abdallah.rhythm.ui.theme.Gray
+import dev.abdallah.rhythm.ui.viewmodel.SongEvent
+import dev.abdallah.rhythm.ui.viewmodel.SongState
 
 @Composable
 fun Songs(
-    songs: List<Song>,
-    onItemClick: (Int) -> Unit,
-    onShuffle: () -> Unit,
-    nowPlaying: Song,
+    state: SongState,
+    onEvent: (SongEvent) -> Unit,
 ) {
-    if (songs.isEmpty()) {
-        NoSongsFound()
+    if (state.songs.isEmpty()) {
+        NoSongFound()
     } else {
         Box(modifier = Modifier.fillMaxSize()) {
-            SongsList(
-                songs = songs,
-                onItemClick = onItemClick,
-                nowPlaying = nowPlaying
+            SongList(
+                state = state,
+                onEvent = onEvent,
             )
             FloatingActionButton(
                 modifier = Modifier
@@ -44,7 +42,7 @@ fun Songs(
                     .align(Alignment.BottomEnd),
                 containerColor = Gray,
                 contentColor = Blue,
-                onClick = { onShuffle() },
+                onClick = { onEvent(SongEvent.Shuffle(state.songs)) },
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.shuffle_24px),
@@ -57,7 +55,7 @@ fun Songs(
 }
 
 @Composable
-fun NoSongsFound() {
+fun NoSongFound() {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
@@ -74,20 +72,19 @@ fun NoSongsFound() {
 }
 
 @Composable
-fun SongsList(
-    songs: List<Song>,
-    onItemClick: (Int) -> Unit,
-    nowPlaying: Song,
+fun SongList(
+    state: SongState,
+    onEvent: (SongEvent) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize()
     ) {
-        items(songs.size, key = { songs[it].id }) {
+        items(state.songs.size, key = { state.songs[it].id }) {
             Song(
-                songs = songs,
-                position = it,
-                onItemClick = onItemClick,
-                nowPlaying = nowPlaying
+                state = state,
+                songs = state.songs,
+                onEvent = onEvent,
+                position = it
             )
         }
     }

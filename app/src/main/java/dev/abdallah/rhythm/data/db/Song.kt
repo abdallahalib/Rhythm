@@ -14,12 +14,12 @@ data class Song(
     val artistId: String,
     val album: String,
     val albumId: Long,
-    val duration: Int,
+    val duration: Long,
     val displayName: String,
     val data: String,
-    val artworkSmall: String,
-    val artworkLarge: String,
-    val uri: String
+    val uri: String,
+    val folder: String,
+    val artwork: String,
 ) : Parcelable {
     companion object {
         val NONE = Song(
@@ -28,13 +28,13 @@ data class Song(
             artist = "",
             artistId = "",
             album = "",
-            albumId = -1,
-            duration = -1,
+            albumId = 1,
+            duration = 1,
             displayName = "",
             data = "",
-            artworkSmall = "",
-            artworkLarge = "",
-            uri = ""
+            uri = "",
+            folder = "",
+            artwork = "",
         )
     }
 }

@@ -8,8 +8,9 @@ import kotlinx.parcelize.Parcelize
 @Entity
 @Parcelize
 data class Playlist(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
+    val songs: List<Song> = emptyList()
 ) : Parcelable {
     companion object {
         val NONE = Playlist(0, "")
