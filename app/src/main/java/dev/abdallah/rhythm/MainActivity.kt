@@ -14,10 +14,15 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
@@ -25,8 +30,12 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -34,10 +43,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -46,10 +60,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.palette.graphics.Palette
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.PermissionStatus
+import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.android.material.color.DynamicColors
 import dagger.hilt.android.AndroidEntryPoint
 import dev.abdallah.rhythm.player.service.PlaybackService
+import dev.abdallah.rhythm.ui.component.BottomSheetOption
 import dev.abdallah.rhythm.ui.component.Category
 import dev.abdallah.rhythm.ui.component.MiniPlayer
 import dev.abdallah.rhythm.ui.screen.Songs
@@ -105,6 +122,13 @@ class MainActivity : ComponentActivity() {
                 lifecycleOwner.lifecycle.addObserver(observer)
                 onDispose {
                     lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+            LaunchedEffect(permissionState.status.isGranted) {
+                snapshotFlow { permissionState.status.isGranted }.distinctUntilChanged().collect {
+                    if (it) {
+                        viewModel.loadData()
+                    }
                 }
             }
             startService()
@@ -202,7 +226,7 @@ class MainActivity : ComponentActivity() {
         val defaultAccentColor = Color.Gray.toArgb()
         val defaultSheetContainerColor = Surface.toArgb()
 
-        val artworkPath = state.queue.getOrNull(state.index)?.artwork
+        val artworkPath = state.queue.getOrNull(state.index)?.artworkLarge
 
         val artworkPalette = if (!artworkPath.isNullOrBlank()) {
             Palette.from(BitmapFactory.decodeFile(artworkPath)).generate()
@@ -287,10 +311,68 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+
+            if (state.showSongBottomSheet) {
+                SongBottomSheet(onEvent = { viewModel.onEvent(it) })
+            }
+            if (state.showAddToPlaylistBottomSheet) {
+                AddToPlaylistBottomSheet(state = state, onEvent = { viewModel.onEvent(it) })
+            }
         }
     }
 }
 
 enum class Screen(val route: String) {
     HOME("home"), FOLDER("folder"), ARTIST("artist"), ALBUM("album"), PLAYLIST("playlist")
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SongBottomSheet(
+    onEvent: (SongEvent) -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState()
+    ModalBottomSheet(
+        onDismissRequest = { onEvent(SongEvent.HideSongBottomSheet) },
+        containerColor = Surface,
+        sheetState = sheetState,
+        dragHandle = { },
+    ) {
+        Column(modifier = Modifier.padding(vertical = 32.dp)) {
+            BottomSheetOption(text = "Add to Playlist", icon = R.drawable.playlist_add_24px) {
+                onEvent(SongEvent.ShowAddToPlaylistBottomSheet)
+            }
+            BottomSheetOption(text = "Share", icon = R.drawable.ios_share_24px) {
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+fun AddToPlaylistBottomSheet(
+    state: SongState,
+    onEvent: (SongEvent) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState()
+    ModalBottomSheet(
+        onDismissRequest = { onEvent(SongEvent.HideAddToPlaylistBottomSheet) },
+        containerColor = Surface,
+        sheetState = sheetState,
+        dragHandle = { },
+    ) {
+        Column {
+            Text(
+                modifier = Modifier
+                    .padding(top = 36.dp)
+                    .align(Alignment.CenterHorizontally),
+                text = "Add to Playlist",
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.W600,
+            )
+            Playlists(state = state, onEvent = onEvent)
+        }
+    }
 }

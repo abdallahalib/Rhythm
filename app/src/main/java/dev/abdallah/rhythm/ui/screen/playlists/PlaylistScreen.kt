@@ -1,6 +1,8 @@
 package dev.abdallah.rhythm.ui.screen.playlists
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,9 +14,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,11 +33,13 @@ import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 import dev.abdallah.rhythm.R
 import dev.abdallah.rhythm.Screen
+import dev.abdallah.rhythm.ui.component.BottomSheetOption
 import dev.abdallah.rhythm.ui.screen.Song
 import dev.abdallah.rhythm.ui.theme.Background
 import dev.abdallah.rhythm.ui.theme.Blue
 import dev.abdallah.rhythm.ui.theme.Gray
 import dev.abdallah.rhythm.ui.theme.SemiTransparent
+import dev.abdallah.rhythm.ui.theme.Surface
 import dev.abdallah.rhythm.ui.viewmodel.SongEvent
 import dev.abdallah.rhythm.ui.viewmodel.SongFilter
 import dev.abdallah.rhythm.ui.viewmodel.SongState
@@ -43,6 +50,11 @@ fun PlaylistScreen(
     state: SongState,
     onEvent: (SongEvent) -> Unit
 ) {
+    if (state.showPlaylistBottomSheet) {
+        PlaylistBottomSheet(
+            onEvent = onEvent
+        )
+    }
     val playlist = state.filter as SongFilter.Playlist
     LazyColumn(
         modifier = Modifier
@@ -80,7 +92,7 @@ fun PlaylistScreen(
                             .background(SemiTransparent, CircleShape)
                             .padding(12.dp)
                             .size(24.dp),
-                        onClick = {  }) {
+                        onClick = { onEvent(SongEvent.ShowPlaylistBottomSheet(playlist.playlist)) }) {
                         Icon(
                             painter = painterResource(id = R.drawable.round_more_vert_24),
                             contentDescription = "More options",
@@ -185,6 +197,27 @@ fun PlaylistScreen(
                 position = it,
                 onEvent = { event -> onEvent(event) }
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PlaylistBottomSheet(onEvent: (SongEvent) -> Unit) {
+    val sheetState = rememberModalBottomSheetState()
+    ModalBottomSheet(
+        onDismissRequest = { onEvent(SongEvent.HidePlaylistBottomSheet) },
+        containerColor = Surface,
+        sheetState = sheetState,
+        dragHandle = { },
+    ) {
+        Column(modifier = Modifier.padding(vertical = 32.dp)) {
+            BottomSheetOption(text = "Delete Playlist", icon = R.drawable.round_delete_forever_24) {
+                onEvent(SongEvent.DeletePlaylist)
+            }
+            BottomSheetOption(text = "Share", icon = R.drawable.ios_share_24px) {
+
+            }
         }
     }
 }

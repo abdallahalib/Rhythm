@@ -27,7 +27,9 @@ interface PlaylistDao {
     suspend fun addSong(playlist: Playlist, song: Song) {
         val songs = playlist.songs.toMutableList()
         songs.add(song)
-        upsert(playlist.copy(songs = songs))
+        songs.distinct().apply {
+            upsert(playlist.copy(songs = this))
+        }
     }
 
     @Transaction

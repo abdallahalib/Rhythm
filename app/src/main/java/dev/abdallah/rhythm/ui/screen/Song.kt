@@ -80,7 +80,7 @@ fun Song(
     ) {
         Box(modifier = Modifier.size(64.dp), contentAlignment = Alignment.Center) {
             GlideImage(
-                model = songs[position].artwork,
+                model = songs[position].artworkSmall,
                 contentScale = ContentScale.Crop,
                 contentDescription = "Album Art",
                 modifier = Modifier

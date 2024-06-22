@@ -1,23 +1,14 @@
 package dev.abdallah.rhythm.ui.screen.playlists
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.CornerSize
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -30,23 +21,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.bumptech.glide.integration.compose.GlideImage
 import dev.abdallah.rhythm.R
-import dev.abdallah.rhythm.Screen
 import dev.abdallah.rhythm.ui.theme.Blue
 import dev.abdallah.rhythm.ui.theme.Gray
 import dev.abdallah.rhythm.ui.theme.Surface
 import dev.abdallah.rhythm.ui.viewmodel.SongEvent
-import dev.abdallah.rhythm.ui.viewmodel.SongFilter
 import dev.abdallah.rhythm.ui.viewmodel.SongState
 
 @Composable
@@ -59,6 +43,22 @@ fun Playlists(
             state = state,
             onEvent = onEvent
         )
+        if (!state.showAddToPlaylistBottomSheet) {
+            FloatingActionButton(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = 120.dp),
+                containerColor = Gray,
+                contentColor = Blue,
+                onClick = { onEvent(SongEvent.ShowNewPlaylistDialog) },
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.round_add_24),
+                    contentDescription = "Shuffle",
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        }
     }
     if (state.showNewPlaylistDialog) {
         NewPlaylistDialog(
@@ -127,44 +127,6 @@ fun PlaylistList(
     onEvent: (SongEvent) -> Unit,
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    .padding(
-                        start = 16.dp,
-                        end = 16.dp,
-                        top = 24.dp,
-                        bottom = 8.dp
-                    )
-                    .background(Surface, RoundedCornerShape(corner = CornerSize(24.dp)))
-                    .clickable {
-                        onEvent(SongEvent.ShowNewPlaylistDialog)
-                    },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "Add new",
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.W500,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Icon(
-                    modifier = Modifier
-                        .padding(start = 16.dp)
-                        .size(24.dp),
-                    painter = painterResource(
-                        id = R.drawable.round_add_24
-                    ),
-                    contentDescription = "",
-                    tint = Color.White,
-                )
-            }
-        }
         items(state.playlists.size) {
             Playlist(
                 state = state,

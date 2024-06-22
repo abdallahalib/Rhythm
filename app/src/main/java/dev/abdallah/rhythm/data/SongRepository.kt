@@ -41,6 +41,10 @@ class SongRepository @Inject constructor(
         playlistDao.upsert(Playlist(name = name))
     }
 
+    suspend fun deletePlaylist(playlistId: Long) = withContext(Dispatchers.IO) {
+        playlistDao.delete(playlistId)
+    }
+
     suspend fun getPlaylists(): Flow<List<Playlist>> = withContext(Dispatchers.IO) {
         return@withContext playlistDao.getAll()
     }
@@ -74,7 +78,8 @@ class SongRepository @Inject constructor(
             Artist(
                 name = song.artist,
                 id = id,
-                artwork = song.artwork,
+                artworkSmall = song.artworkSmall,
+                artworkLarge = song.artworkLarge,
                 songs = list
             )
         }
@@ -86,7 +91,8 @@ class SongRepository @Inject constructor(
             Album(
                 name = song.album,
                 id = id,
-                artwork = song.artwork,
+                artworkSmall = song.artworkSmall,
+                artworkLarge = song.artworkLarge,
                 songs = list
             )
         }
@@ -104,7 +110,7 @@ class SongRepository @Inject constructor(
             }
     }
 
-    suspend fun refreshData() = withContext(Dispatchers.IO) {
+    private suspend fun refreshData() = withContext(Dispatchers.IO) {
         val songs = contentResolver.queryAudio()
         val newSet = songs.map { it.id }.toSet()
         val existingSet = songDao.getAll().first().map { it.id }.toSet()

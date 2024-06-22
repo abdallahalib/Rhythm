@@ -56,7 +56,7 @@ fun Album(
         verticalAlignment = Alignment.CenterVertically
     ) {
         GlideImage(
-            model = state.albums[position].artwork,
+            model = state.albums[position].artworkSmall,
             contentScale = ContentScale.Crop,
             contentDescription = "Album Artwork",
             modifier = Modifier

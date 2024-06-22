@@ -93,7 +93,7 @@ fun AlbumScreen(
                     }
                 }
                 GlideImage(
-                    model = album.album.artwork,
+                    model = album.album.artworkLarge,
                     contentScale = ContentScale.Crop,
                     contentDescription = "Album artwork",
                     modifier = Modifier

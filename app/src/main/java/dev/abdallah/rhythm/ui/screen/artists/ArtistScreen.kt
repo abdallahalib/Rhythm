@@ -93,7 +93,7 @@ fun ArtistScreen(
                     }
                 }
                 GlideImage(
-                    model = artist.artist.artwork,
+                    model = artist.artist.artworkLarge,
                     contentScale = ContentScale.Crop,
                     contentDescription = "Artist",
                     modifier = Modifier

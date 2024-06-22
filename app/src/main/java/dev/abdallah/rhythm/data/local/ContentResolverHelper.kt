@@ -41,7 +41,6 @@ class ContentResolverHelper @Inject constructor(@ApplicationContext val context:
         return getCursorData()
     }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
     private fun getCursorData(): MutableList<Song> {
         val songs = mutableListOf<Song>()
 
@@ -79,6 +78,16 @@ class ContentResolverHelper @Inject constructor(@ApplicationContext val context:
                         val data = getString(dataColumn)
                         val album = getString(albumColumn)
                         val albumId = getLong(albumIdColumn)
+                        val artworkSmall = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            getAlbumArtworkPathSmall(albumId, uri.toString())
+                        } else {
+                            getAlbumArtworkPathLegacy(albumId)
+                        }
+                        val artworkLarge = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            getAlbumArtworkPathLarge(albumId, uri.toString())
+                        } else {
+                            getAlbumArtworkPathLegacy(albumId)
+                        }
                         songs += Song(
                             uri = uri.toString(),
                             title = title,
@@ -90,10 +99,11 @@ class ContentResolverHelper @Inject constructor(@ApplicationContext val context:
                             data = data,
                             album = album,
                             albumId = albumId,
-                            artwork = getAlbumArtworkPathLarge(albumId, uri.toString()),
-                            folder =  File(data).parentFile?.path ?: "",
+                            artworkSmall = artworkSmall,
+                            artworkLarge = artworkLarge,
+                            folder = File(data).parentFile?.path ?: "",
 
-                        )
+                            )
                     }
                 }
             }

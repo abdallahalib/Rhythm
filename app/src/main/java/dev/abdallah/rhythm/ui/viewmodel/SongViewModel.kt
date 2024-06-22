@@ -45,8 +45,6 @@ class SongViewModel @Inject constructor(
 
     init {
         onResume()
-        getSongs()
-        getPlaylists()
         viewModelScope.launch {
             playbackServiceHandler.playbackState.collect { playbackState ->
                 when (playbackState) {
@@ -84,6 +82,11 @@ class SongViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun loadData() {
+        getSongs()
+        getPlaylists()
     }
 
     private fun getPlaylists() {
@@ -177,7 +180,16 @@ class SongViewModel @Inject constructor(
             }
 
             is SongEvent.AddTo -> {
-
+                viewModelScope.launch {
+                    repository.addSong(event.playlist, _songState.value.songBottomSheet)
+                    _songState.update {
+                        it.copy(
+                            showAddToPlaylistBottomSheet = false,
+                            showSongBottomSheet = false,
+                        )
+                    }
+                    getPlaylists()
+                }
             }
 
             is SongEvent.DeleteFrom -> {
@@ -192,8 +204,18 @@ class SongViewModel @Inject constructor(
                 }
             }
 
-            is SongEvent.DeletePlaylist -> {
-
+            SongEvent.DeletePlaylist -> {
+                viewModelScope.launch {
+                    repository.deletePlaylist(_songState.value.playlistBottomSheet.id)
+                    getPlaylists()
+                    _songState.update {
+                        it.copy(
+                            showPlaylistBottomSheet = false,
+                            playlistBottomSheet = Playlist.NONE,
+                            screen = Screen.HOME,
+                        )
+                    }
+                }
             }
 
             is SongEvent.RemoveSong -> {
@@ -246,6 +268,57 @@ class SongViewModel @Inject constructor(
                     getPlaylists()
                 }
             }
+
+            SongEvent.HideSongBottomSheet -> {
+                _songState.update {
+                    it.copy(
+                        showSongBottomSheet = false,
+                        songBottomSheet = Song.NONE
+                    )
+                }
+            }
+            is SongEvent.ShowSongBottomSheet -> {
+                _songState.update {
+                    it.copy(
+                        showSongBottomSheet = true,
+                        songBottomSheet = event.song
+                    )
+                }
+            }
+
+            SongEvent.HideAddToPlaylistBottomSheet -> {
+                _songState.update {
+                    it.copy(
+                        showAddToPlaylistBottomSheet = false
+                    )
+                }
+            }
+
+            SongEvent.ShowAddToPlaylistBottomSheet -> {
+                _songState.update {
+                    it.copy(
+                        showAddToPlaylistBottomSheet = true
+                    )
+                }
+            }
+
+            is SongEvent.ShowPlaylistBottomSheet -> {
+                _songState.update {
+                    it.copy(
+                        showPlaylistBottomSheet = true,
+                        playlistBottomSheet = event.playlist
+                    )
+                }
+            }
+
+            SongEvent.HidePlaylistBottomSheet -> {
+                _songState.update {
+                    it.copy(
+                        showPlaylistBottomSheet = false,
+                        playlistBottomSheet = Playlist.NONE
+                    )
+                }
+            }
         }
     }
 
@@ -253,7 +326,7 @@ class SongViewModel @Inject constructor(
         val mediaItems = songs.map { song ->
             MediaItem.Builder().setUri(song.uri).setMediaId(song.id.toString()).setMediaMetadata(
                 MediaMetadata.Builder().setAlbumArtist(song.artist).setTitle(song.title)
-                    .setArtworkUri(song.artwork.toUri()).build()
+                    .setArtworkUri(song.artworkLarge.toUri()).build()
             ).build()
         }
         playbackServiceHandler.setMediaItemList(mediaItems, index)
@@ -277,16 +350,22 @@ sealed interface SongEvent {
     data class Shuffle(val songs: List<Song>) : SongEvent
     data class Share(val song: Song) : SongEvent
     data class Edit(val song: Song) : SongEvent
-    data class AddTo(val playlist: Playlist, val song: Song) : SongEvent
+    data class AddTo(val playlist: Playlist) : SongEvent
     data class DeleteFrom(val playlist: Playlist, val song: Song) : SongEvent
     data class Filter(val filter: SongFilter) : SongEvent
-    data class DeletePlaylist(val playlistId: Long) : SongEvent
+    data object DeletePlaylist : SongEvent
     data class RemoveSong(val songId: Long, val playlistId: Long) : SongEvent
     data class Navigate(val screen: Screen) : SongEvent
     data class Favorite(val song: Song) : SongEvent
     data object ShowNewPlaylistDialog : SongEvent
     data object HideNewPlaylistDialog : SongEvent
     data class NewPlaylist(val name: String) : SongEvent
+    data class ShowSongBottomSheet(val song: Song) : SongEvent
+    data object HideSongBottomSheet : SongEvent
+    data object ShowAddToPlaylistBottomSheet : SongEvent
+    data object HideAddToPlaylistBottomSheet : SongEvent
+    data class ShowPlaylistBottomSheet(val playlist: Playlist) : SongEvent
+    data object HidePlaylistBottomSheet : SongEvent
 }
 
 data class SongState(
@@ -302,6 +381,11 @@ data class SongState(
     val screen: Screen = Screen.HOME,
     val queue: List<Song> = listOf(Song.NONE),
     val showNewPlaylistDialog : Boolean = false,
+    val showSongBottomSheet : Boolean = false,
+    val showAddToPlaylistBottomSheet : Boolean = false,
+    val showPlaylistBottomSheet : Boolean = false,
+    val songBottomSheet : Song = Song.NONE,
+    val playlistBottomSheet : Playlist = Playlist.NONE,
 )
 
 sealed class SongFilter {

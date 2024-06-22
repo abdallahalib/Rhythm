@@ -8,10 +8,11 @@ import kotlinx.parcelize.Parcelize
 data class Artist(
     val name: String,
     val id: String,
-    val artwork: String,
+    val artworkSmall: String,
+    val artworkLarge: String,
     val songs: List<Song>,
 ): Parcelable {
     companion object {
-        val NONE = Artist("", "", "", emptyList())
+        val NONE = Artist("", "", "", "", emptyList())
     }
 }

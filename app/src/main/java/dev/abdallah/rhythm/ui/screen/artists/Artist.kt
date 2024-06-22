@@ -56,7 +56,7 @@ fun Artist(
         verticalAlignment = Alignment.CenterVertically
     ) {
         GlideImage(
-            model = state.artists[position].artwork,
+            model = state.artists[position].artworkSmall,
             contentScale = ContentScale.Crop,
             contentDescription = "Artist Artwork",
             modifier = Modifier

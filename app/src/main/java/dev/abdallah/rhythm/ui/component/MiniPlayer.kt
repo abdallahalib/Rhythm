@@ -107,7 +107,7 @@ fun MiniPlayer(
                             alpha = animatedAlpha
                         }) {
                         GlideImage(
-                            model = song.artwork,
+                            model = song.artworkSmall,
                             contentScale = ContentScale.Crop,
                             contentDescription = "Album Art",
                             modifier = Modifier
@@ -138,7 +138,7 @@ fun MiniPlayer(
                         animationSpec = tween(durationMillis = 250, easing = LinearEasing)
                     )
                     GlideImage(
-                        model = song.artwork,
+                        model = song.artworkLarge,
                         contentScale = ContentScale.Crop,
                         contentDescription = "Album Art",
                         modifier = Modifier
@@ -297,7 +297,7 @@ fun MiniPlayer(
                 }
                 IconButton(modifier = Modifier
                     .padding(8.dp)
-                    .size(32.dp), onClick = { }) {
+                    .size(32.dp), onClick = { onEvent(SongEvent.ShowSongBottomSheet(song)) }) {
                     Icon(
                         painter = painterResource(id = R.drawable.round_more_horiz_24),
                         contentDescription = "More",

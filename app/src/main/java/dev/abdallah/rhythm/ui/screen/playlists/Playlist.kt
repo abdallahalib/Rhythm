@@ -38,6 +38,7 @@ fun Playlist(
     onEvent: (SongEvent) -> Unit,
     position: Int,
 ) {
+    val topPadding = if (position == 0) 24.dp else 8.dp
     val bottomPadding = if (position == state.playlists.size - 1) 112.dp else 8.dp
     Row(
         modifier = Modifier
@@ -45,13 +46,17 @@ fun Playlist(
             .padding(
                 start = 16.dp,
                 end = 16.dp,
-                top = 8.dp,
+                top = topPadding,
                 bottom = bottomPadding
             )
             .background(Surface, RoundedCornerShape(corner = CornerSize(24.dp)))
             .clickable {
-                onEvent(SongEvent.Filter(filter = SongFilter.Playlist(state.playlists[position])))
-                onEvent(SongEvent.Navigate(screen = Screen.PLAYLIST))
+                if (state.showAddToPlaylistBottomSheet) {
+                    onEvent(SongEvent.AddTo(state.playlists[position]))
+                } else {
+                    onEvent(SongEvent.Filter(filter = SongFilter.Playlist(state.playlists[position])))
+                    onEvent(SongEvent.Navigate(screen = Screen.PLAYLIST))
+                }
             },
         verticalAlignment = Alignment.CenterVertically
     ) {
