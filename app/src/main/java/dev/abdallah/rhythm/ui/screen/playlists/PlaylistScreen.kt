@@ -212,12 +212,12 @@ fun PlaylistBottomSheet(onEvent: (SongEvent) -> Unit) {
         dragHandle = { },
     ) {
         Column(modifier = Modifier.padding(vertical = 32.dp)) {
-            BottomSheetOption(text = "Delete Playlist", icon = R.drawable.round_delete_forever_24) {
-                onEvent(SongEvent.DeletePlaylist)
-            }
-            BottomSheetOption(text = "Share", icon = R.drawable.ios_share_24px) {
-
-            }
+            BottomSheetOption(
+                text = "Delete Playlist",
+                icon = R.drawable.round_delete_forever_24,
+                onClick = {
+                    onEvent(SongEvent.DeletePlaylist)
+                })
         }
     }
 }

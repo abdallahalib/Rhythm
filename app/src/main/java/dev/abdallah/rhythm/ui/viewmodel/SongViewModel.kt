@@ -1,5 +1,6 @@
 package dev.abdallah.rhythm.ui.viewmodel
 
+import android.util.Log
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -92,6 +93,17 @@ class SongViewModel @Inject constructor(
     private fun getPlaylists() {
         viewModelScope.launch {
             repository.getPlaylists().collect { playlists ->
+                val filter = _songState.value.filter
+                if (filter is SongFilter.Playlist) {
+                    val playlist = playlists.find { it.id == filter.playlist.id }
+                    if (playlist != null) {
+                        _songState.update {
+                            it.copy(
+                                filter = SongFilter.Playlist(playlist)
+                            )
+                        }
+                    }
+                }
                 _songState.update {
                     it.copy(
                         playlists = playlists
@@ -103,7 +115,9 @@ class SongViewModel @Inject constructor(
 
     private fun getSongs() {
         viewModelScope.launch {
+            repository.refreshData()
             repository.getSongs().collect { songs ->
+                Log.d(TAG, "getSongs: $songs")
                 _songs.update {
                     songs
                 }
@@ -319,6 +333,63 @@ class SongViewModel @Inject constructor(
                     )
                 }
             }
+
+            SongEvent.HideSleepTimerBottomSheet -> {
+                _songState.update {
+                    it.copy(
+                        showSleepTimerBottomSheet = false
+                    )
+                }
+            }
+            SongEvent.ShowSleepTimerBottomSheet -> {
+                _songState.update {
+                    it.copy(
+                        showSleepTimerBottomSheet = true
+                    )
+                }
+
+            }
+            is SongEvent.Sleep -> {
+                playbackServiceHandler.onPlayerEvent(PlayerEvent.Sleep(event.duration))
+                _songState.update {
+                    it.copy(
+                        showSleepTimerBottomSheet = false
+                    )
+                }
+            }
+
+            SongEvent.StopAtEnd -> {
+                playbackServiceHandler.onPlayerEvent(PlayerEvent.StopAtEnd)
+                _songState.update {
+                    it.copy(
+                        showSleepTimerBottomSheet = false
+                    )
+                }
+            }
+
+            is SongEvent.Speed -> {
+                playbackServiceHandler.onPlayerEvent(PlayerEvent.Speed(event.speed))
+                _songState.update {
+                    it.copy(
+                        showSpeedBottomSheet = false
+                    )
+                }
+            }
+
+            SongEvent.HideSpeedBottomSheet -> {
+                _songState.update {
+                    it.copy(
+                        showSpeedBottomSheet = false
+                    )
+                }
+            }
+            SongEvent.ShowSpeedBottomSheet -> {
+                _songState.update {
+                    it.copy(
+                        showSpeedBottomSheet = true
+                    )
+                }
+            }
         }
     }
 
@@ -366,6 +437,13 @@ sealed interface SongEvent {
     data object HideAddToPlaylistBottomSheet : SongEvent
     data class ShowPlaylistBottomSheet(val playlist: Playlist) : SongEvent
     data object HidePlaylistBottomSheet : SongEvent
+    data object ShowSleepTimerBottomSheet: SongEvent
+    data object HideSleepTimerBottomSheet: SongEvent
+    data class Sleep(val duration: Long) : SongEvent
+    data object StopAtEnd : SongEvent
+    data class Speed(val speed: Float) : SongEvent
+    data object ShowSpeedBottomSheet : SongEvent
+    data object HideSpeedBottomSheet : SongEvent
 }
 
 data class SongState(
@@ -384,6 +462,8 @@ data class SongState(
     val showSongBottomSheet : Boolean = false,
     val showAddToPlaylistBottomSheet : Boolean = false,
     val showPlaylistBottomSheet : Boolean = false,
+    val showSleepTimerBottomSheet : Boolean = false,
+    val showSpeedBottomSheet : Boolean = false,
     val songBottomSheet : Song = Song.NONE,
     val playlistBottomSheet : Playlist = Playlist.NONE,
 )

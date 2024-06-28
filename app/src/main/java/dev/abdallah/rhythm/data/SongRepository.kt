@@ -1,6 +1,5 @@
 package dev.abdallah.rhythm.data
 
-import android.util.Log
 import dev.abdallah.rhythm.data.db.Playlist
 import dev.abdallah.rhythm.data.db.PlaylistDao
 import dev.abdallah.rhythm.data.db.Queue
@@ -13,14 +12,11 @@ import dev.abdallah.rhythm.data.local.model.Artist
 import dev.abdallah.rhythm.data.local.model.Folder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 import javax.inject.Inject
 
 class SongRepository @Inject constructor(
@@ -32,7 +28,6 @@ class SongRepository @Inject constructor(
 
     init {
         CoroutineScope(Dispatchers.IO).launch {
-            refreshData()
             playlistDao.insert(Playlist(name = "Favorites", id = 1))
         }
     }
@@ -110,7 +105,7 @@ class SongRepository @Inject constructor(
             }
     }
 
-    private suspend fun refreshData() = withContext(Dispatchers.IO) {
+    suspend fun refreshData() = withContext(Dispatchers.IO) {
         val songs = contentResolver.queryAudio()
         val newSet = songs.map { it.id }.toSet()
         val existingSet = songDao.getAll().first().map { it.id }.toSet()

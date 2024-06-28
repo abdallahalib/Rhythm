@@ -325,7 +325,7 @@ fun MiniPlayer(
                         atEnd = state.isPlaying
                     ),
                     contentDescription = "Play/Pause",
-                    tint = primaryColor,
+                    tint = Color.White,
                     modifier = Modifier
                         .size(48.dp)
                         .mirror()
@@ -339,7 +339,7 @@ fun MiniPlayer(
                     modifier = Modifier.mirror(),
                     painter = painterResource(id = R.drawable.fast_forward_24px),
                     contentDescription = "Skip",
-                    tint = primaryColor
+                    tint = Color.White
                 )
             }
         }

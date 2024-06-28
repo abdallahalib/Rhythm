@@ -8,6 +8,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +26,10 @@ class PlaybackServiceHandler @Inject constructor(
     private val _playbackState: MutableStateFlow<PlaybackState> =
         MutableStateFlow(PlaybackState.Initial)
     val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
+
+    private var sleepTimerJob: Job? = null
+    private var stopAtEnd : Boolean = false
+
 
     init {
         exoPlayer.addListener(this)
@@ -84,6 +89,10 @@ class PlaybackServiceHandler @Inject constructor(
     override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
         super.onMediaMetadataChanged(mediaMetadata)
         exoPlayer.currentMediaItem?.let { mediaItem ->
+            if (exoPlayer.previousMediaItemIndex != -1 && stopAtEnd) {
+                exoPlayer.stop()
+                stopAtEnd = true
+            }
             _playbackState.update {
                 PlaybackState.NowPlaying(
                     index = exoPlayer.currentMediaItemIndex,
@@ -92,6 +101,7 @@ class PlaybackServiceHandler @Inject constructor(
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     fun onPlayerEvent(event: PlayerEvent) {
         when (event) {
             is PlayerEvent.PlayPause -> {
@@ -124,6 +134,25 @@ class PlaybackServiceHandler @Inject constructor(
                 exoPlayer.seekTo(
                     (event.position * exoPlayer.duration).toLong()
                 )
+                _playbackState.update {
+                    PlaybackState.Progress((event.position * exoPlayer.duration).toLong())
+                }
+            }
+            is PlayerEvent.Sleep -> {
+                sleepTimerJob?.cancel()
+                stopAtEnd = false
+                sleepTimerJob = GlobalScope.launch(Dispatchers.Main) {
+                    delay(event.duration)
+                    exoPlayer.stop()
+                }
+            }
+
+            PlayerEvent.StopAtEnd -> {
+                sleepTimerJob?.cancel()
+                stopAtEnd = true
+            }
+            is PlayerEvent.Speed -> {
+                exoPlayer.setPlaybackSpeed(event.speed)
             }
         }
     }
@@ -137,6 +166,9 @@ sealed class PlayerEvent {
     data object Next : PlayerEvent()
     data object Previous : PlayerEvent()
     data class Seek(val position: Float) : PlayerEvent()
+    data class Sleep(val duration: Long) : PlayerEvent()
+    data object StopAtEnd : PlayerEvent()
+    data class Speed(val speed: Float): PlayerEvent()
 }
 
 sealed class PlaybackState {

@@ -9,6 +9,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
+import kotlin.time.times
 
 fun millisecondsToMinutes(milliseconds: Long): String {
     val seconds = milliseconds / 1000
@@ -33,4 +34,8 @@ fun getScreenWidthInPx(): Int {
 
 fun Float.toPx(context: Context): Float {
     return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, this, context.resources.displayMetrics)
+}
+
+fun minutesToMilliseconds(minutes: Int): Long {
+    return minutes.times(60).times(1000).toLong()
 }

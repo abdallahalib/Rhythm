@@ -21,21 +21,25 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun BottomSheetOption(
     text: String,
-    icon: Int,
-    onClick: () -> Unit
+    icon: Int? = null,
+    onClick: () -> Unit,
+    textColor: Color = Color.White,
+    iconColor: Color = Color.White,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start,
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(horizontal = 32.dp, vertical = 16.dp)) {
-        Icon(
-            modifier = Modifier.size(36.dp),
-            painter = painterResource(id = icon),
-            contentDescription = "contentDescription",
-            tint = Color.White,
-        )
+            .padding(horizontal = 24.dp, vertical = 12.dp)) {
+        icon?.let {
+            Icon(
+                modifier = Modifier.size(24.dp),
+                painter = painterResource(id = it),
+                contentDescription = "contentDescription",
+                tint = iconColor,
+            )
+        }
         Text(
             text = text,
             modifier = Modifier
@@ -43,8 +47,8 @@ fun BottomSheetOption(
                 .padding(start = 8.dp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            color = Color.White,
-            fontSize = 18.sp,
+            color = textColor,
+            fontSize = 16.sp,
             fontWeight = FontWeight.W500,
         )
     }
